@@ -11,26 +11,41 @@ Scoring approaches
 There are two defensible ways to score a chimera with a protein language
 model, and they answer different questions.
 
+**Embedding similarity** (``embedding_distance``) -- the default. Embed the
+chimera and measure how far it moves toward a thermophilic reference set
+relative to the receptor. This asks *does this look more like a thermophile
+than wild type did?* It is cheap (one forward pass per design) and it encodes
+the thermostability objective directly, which likelihood does not. Its
+weakness is that it is only as meaningful as the reference set, and embedding
+proximity has no calibrated relationship to stability or foldability -- a
+design can drift toward the thermophile centroid while being unfoldable.
+
 **Likelihood** (``delta_pll``, ``junction_pll``). Ask the model how probable
-the chimeric sequence is, and compare against the unmodified receptor. This
-measures *plausibility*: would evolution plausibly have produced this? It is
-the better-grounded choice, since masked-token likelihood is exactly what the
-model was trained to estimate, and it needs no reference set. Its weakness is
-cost -- the masked-marginal estimator is one forward pass per position.
+the chimeric sequence is and compare against the receptor. This measures
+*plausibility* rather than direction, and it is better motivated in
+principle: masked-token probability is exactly what the model was trained to
+estimate, it needs no reference set, and the junction term targets the
+specific failure mode that kills grafts. Its costs are compute (the
+masked-marginal estimator is one forward pass per position) and, here,
+evidence -- see below.
 
-**Embedding similarity** (``embedding_distance``). Embed the chimera and
-measure distance to a reference set, typically the thermophilic donors. This
-asks *does this look more like a thermophile than wild type did?* It is far
-cheaper (one forward pass per design) and it encodes the thermostability
-objective directly, which likelihood does not. Its weakness is that it is only
-as meaningful as the reference set, and embedding proximity has no calibrated
-relationship to either stability or foldability -- a design can drift toward
-the thermophile centroid while being unfoldable.
+Validation status
+-----------------
+Be aware of the asymmetry, because the defaults encode it. The embedding path
+has been run end to end on a real target, with the ranked designs checked by
+structure prediction, and it held up. The likelihood path has not been run.
 
-Neither is a substitute for simulation or experiment. Use likelihood to
-*reject* implausible designs and embedding distance to *order* the survivors
-by how far they move toward the thermophilic regime, rather than asking one
-number to do both jobs.
+So likelihood carries no weight in the default config despite being the
+better-motivated choice, and ``filters.max_pll_drop`` defaults to ``null``: a
+hard filter on an unvalidated signal silently discards designs there is no
+evidence are bad. Both terms are implemented and switching the weights is a
+config change, but validate against designs with known structural or
+experimental outcomes before trusting them to rank.
+
+Neither signal is a substitute for simulation or experiment. The eventual
+sensible combination is likelihood to *reject* and embedding distance to
+*order*, rather than one weighted sum doing both jobs -- but that is a
+hypothesis about this pipeline, not a result from it.
 
 Implementation notes
 --------------------

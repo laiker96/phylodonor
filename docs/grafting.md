@@ -19,64 +19,95 @@ Geometric filters alone are not enough. They tell you a segment fits; they do no
 whether the resulting sequence is something that folds and expresses. That is what a protein
 language model is for.
 
+## Validation status — read this before changing the weights
+
+The two scoring approaches below are not on equal footing in this pipeline, and the
+defaults encode that rather than encoding which one is prettier in theory.
+
+| Path | Status |
+|---|---|
+| **Embedding distance** | Run end to end on a real target. Ranked designs were folded with a structure predictor and the results held up. This is the default. |
+| **Likelihood (PLL)** | Implemented, **not run**. Carries zero weight by default, and `filters.max_pll_drop` defaults to `null`. |
+
+Likelihood is the better-motivated choice on paper, for the reasons below. It is still not
+the default, because a hard filter on an unvalidated signal silently discards designs you
+have no evidence are bad — and silent discarding is the failure mode you cannot detect from
+the output. Switching is a config change; do it against designs whose structural or
+experimental outcome you already know.
+
 ## Two different questions
 
-The toolkit computes both of the following, because they are not interchangeable and
-treating them as such is the main way this stage goes wrong.
+The toolkit computes both, because they are not interchangeable and treating them as such
+is the main way this stage goes wrong.
+
+### Direction — embedding distance (default)
+
+Embed the chimera, embed a reference set, and measure how far the design moves toward it
+relative to wild type. `embedding_reference` selects the set: `donors` uses the ranked
+donors, `thermophile_clades` uses every tip the `thermal` stage called thermophilic — a
+larger and less arbitrary reference, and the better choice when the tree supports it.
+
+This asks a question likelihood cannot: *has this design actually moved toward the
+thermophilic regime?* Likelihood is objective-blind — a design can be perfectly plausible
+and no more thermostable than wild type. Embedding distance encodes the goal directly, at
+one forward pass per design.
+
+Its weakness is that it is only as meaningful as the reference set, and embedding proximity
+has no calibrated relationship to stability *or* foldability. A design can drift toward the
+thermophile centroid while being unfoldable, and nothing in the metric notices. **This is
+why the structure-prediction gate below is not optional.**
 
 ### Plausibility — likelihood
 
-Score the pseudo-log-likelihood (PLL) of the chimeric sequence under a masked language
-model and subtract the receptor's. Negative means the model finds the design less natural
-than wild type.
+Score the pseudo-log-likelihood of the chimeric sequence under a masked language model and
+subtract the receptor's. Negative means the model finds the design less natural than wild
+type.
 
-This is the better-grounded signal: masked-token probability is exactly what the model was
-trained to estimate, and it needs no reference set, no assumptions and no tuning. It is
-very good at the thing you most need — rejecting designs that are quietly broken.
+Better grounded in principle: masked-token probability is exactly what the model was
+trained to estimate, it needs no reference set, and it should be good at the thing the
+embedding term cannot do — rejecting designs that are quietly broken.
 
 Two variants:
 
 | `pll_method` | Cost | Use when |
 |---|---|---|
-| `masked` | one forward pass **per position** | default; required if you trust the junction term |
+| `masked` | one forward pass **per position** | required if you trust the junction term |
 | `wt_marginal` | one forward pass **per design** | coarse first pass over a very large candidate set |
 
 `wt_marginal` reads every position from a single unmasked pass. It correlates well with
-`masked` for ranking overall, but it is biased precisely where local context changed — at
-the junctions — which is where you most need accuracy. Use it to triage thousands down to
-hundreds, then re-score with `masked`.
+`masked` for overall ranking, but it is biased precisely where local context changed — at
+the junctions — which is where you most need accuracy.
 
-**The junction term is the one that earns its keep.** A graft can leave global PLL almost
-untouched while producing two implausible seams, because the deltas average out over a
-400-residue protein. Restricting the same per-position log probabilities to a window around
-each seam surfaces exactly the failure mode that kills designs experimentally. If you
-compute one thing, compute this.
+**If you validate one likelihood term, validate the junction term.** A graft can leave
+global PLL almost untouched while producing two implausible seams, because the deltas
+average out over a 400-residue protein. Restricting the same per-position log probabilities
+to a window around each seam targets exactly the failure mode that kills designs. That is
+the argument for it; it is not yet a result.
 
-### Direction — embedding distance
+### The combination to aim at
 
-Embed the chimera, embed a reference set (your thermophilic donors, or the tips of the
-thermophilic clades from the `thermal` stage), and measure the distance between them.
-
-This asks a question likelihood cannot: *has this design actually moved toward the
-thermophilic regime?* Likelihood is objective-blind — a design can be perfectly plausible
-and no more thermostable than wild type. Embedding distance encodes the goal directly, and
-costs one forward pass per design.
-
-Its weakness is that it is only as meaningful as the reference set, and embedding proximity
-has no calibrated relationship to stability *or* foldability. A design can drift toward the
-thermophile centroid while being unfoldable, and nothing in the metric notices.
-
-### How to combine them
-
-Use likelihood to **reject** and embedding distance to **order**:
+Likelihood to **reject**, embedding distance to **order**:
 
 1. Hard-filter on `max_pll_drop` — remove designs the model finds implausible.
 2. Hard-filter on the junction term — remove designs with bad seams.
-3. Rank survivors by the composite, with embedding distance carrying real weight.
+3. Rank survivors by embedding distance and donor conservation.
 
 Do not ask a single weighted sum to do both jobs. A design with a catastrophic junction and
-an excellent embedding distance will score respectably in a naive composite, and it will
-fail in the lab.
+an excellent embedding distance scores respectably in a naive composite and fails in the
+lab. Note this is the *target* design, not the validated one — step 3 is what currently
+runs, with steps 1 and 2 available and unproven.
+
+## The structure-prediction gate
+
+Because the default ranking signal says nothing about foldability, the survivors get folded
+and checked. `validate.junction_confidence` gates on predicted confidence **at the seams**
+rather than over the whole model: a broken graft typically yields a confident global fold
+with one disordered junction, and a mean pLDDT across 400 residues averages that away.
+
+What this establishes, precisely: it rules out structural incoherence. It is not evidence
+of stability, and structure predictors are permissive about chimeras — they will
+confidently fold sequences that never express. Passing the gate means a design is worth
+spending simulation time on, nothing more.
 
 ## Optional: inverse folding
 

@@ -16,21 +16,33 @@ candidate chimeras. Folding and simulating all of them is not affordable, and
 structural filters alone do not distinguish a graft that reads like a real
 protein from one that merely fits geometrically.
 
-A protein language model gives a cheap, sequence-only prior for "does this
-look like something evolution would produce", which is a useful proxy for
-foldability and expressibility. Two terms do most of the work:
+A protein language model gives a cheap, sequence-only signal for triage. The
+default ranking term is:
+
+``embedding_distance``
+    How far the design's mean embedding moves toward a thermophilic reference
+    set, relative to the receptor. This encodes the actual objective --
+    likelihood has no idea you want thermostability -- at one forward pass per
+    design. It is the default because it is the combination that has been run
+    end to end here, with the surviving designs checked by structure
+    prediction.
+
+Two likelihood terms are implemented and carry no weight by default:
 
 ``delta_pll``
-    Pseudo-log-likelihood of the chimera minus that of the unmodified
-    receptor. Negative means the model finds the design less natural than
-    wild type. Small negative values are normal and acceptable; large drops
-    almost always indicate a broken graft.
+    Pseudo-log-likelihood of the chimera minus that of the receptor. Negative
+    means the model finds the design less natural than wild type.
 
 ``junction_pll``
-    The same quantity restricted to a window around each seam. This is the
-    discriminating term in practice. A graft can leave global likelihood
-    nearly untouched while producing two implausible junctions, and those
-    junctions are exactly where designs fail experimentally.
+    The same quantity restricted to a window around each seam. Expected to be
+    the most discriminating term available, since a graft can leave global
+    likelihood nearly untouched while producing two implausible junctions, and
+    those junctions are where designs fail experimentally.
+
+These are better motivated than the embedding term -- masked-token
+probability is what the model was trained to estimate -- but they have not
+been validated in this pipeline, so the defaults do not rely on them. See
+``docs/grafting.md``.
 
 Optionally, an inverse-folding model (ESM-IF, ProteinMPNN) scores the chimeric
 sequence *conditioned on the receptor backbone*, which asks a sharper

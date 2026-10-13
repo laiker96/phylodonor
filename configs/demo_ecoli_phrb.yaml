@@ -168,25 +168,31 @@ grafting:
   language_model:
     sequence_model: esm2_t33_650M_UR50D
     inverse_folding_model: null
+    embedding_reference: thermophile_clades
     pll_method: masked
     batch_size: 8
     device: auto
 
   score:
+    # The validated combination: embedding-based ranking, survivors checked by
+    # structure prediction. See docs/grafting.md.
     weights:
-      delta_pll: 0.40
-      junction_pll: 0.25
-      inverse_folding: 0.20
-      donor_conservation: 0.15
+      embedding_distance: 0.70
+      donor_conservation: 0.30
     junction_window: 7
     filters:
-      max_pll_drop: 0.50
+      max_pll_drop: null            # PLL path not yet validated here
       forbid_new_cysteines: true    # not designing disulfides in this demo
       forbid_n_glycosylation_motifs: false
     keep_top: 20
 
   validate:
+    # Fold the survivors and gate on predicted-structure confidence at the
+    # junctions. This is the check that has caught real failures.
     fold: true
+    junction_confidence:
+      min_plddt: 70
+      max_pae_angstrom: 10
     minimize_holo: true
     run_dynamics: false
 

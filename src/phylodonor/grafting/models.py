@@ -88,25 +88,37 @@ class LMScores:
     that designs of different lengths stay comparable.
     """
 
-    delta_pll: float
-    """Whole-sequence pseudo-log-likelihood, chimera minus receptor."""
-    junction_pll: float
-    """Mean delta PLL within the junction windows only. In practice the most
-    discriminating term: a graft can be globally unremarkable and still have
-    two implausible seams, and seams are where designs fail."""
-    inverse_folding: float | None = None
-    """Sequence-given-backbone log-likelihood delta, if an inverse-folding
-    model was enabled. Requires a predicted structure per design."""
+    embedding_distance: float | None = None
+    """Movement of the design's mean embedding toward a thermophilic reference
+    set, relative to the receptor. Positive means the design sits closer to
+    the reference than wild type does.
+
+    This is the default ranking signal, because it is the one that has been
+    run end to end here with structure-prediction follow-up. It encodes the
+    objective directly -- likelihood does not know you want thermostability --
+    at one forward pass per design. Its limitation is that it is only as
+    meaningful as the reference set, and embedding proximity has no calibrated
+    relationship to stability or foldability."""
     donor_conservation: float | None = None
     """How typical the donor segment is within its own thermophilic clade. A
     graft taken from an idiosyncratic donor loop is a worse bet than one taken
     from a region conserved across thermophiles."""
-    embedding_distance: float | None = None
-    """Optional alternative signal: distance between the design's mean
-    embedding and a reference set (e.g. the thermophile donors). Cheaper than
-    PLL and useful for coarse triage, but it measures similarity to a chosen
-    reference rather than plausibility, so it answers a different question.
-    See ``docs/grafting.md`` for when each is appropriate."""
+
+    delta_pll: float | None = None
+    """Whole-sequence pseudo-log-likelihood, chimera minus receptor.
+
+    Better motivated in principle than the embedding term -- masked-token
+    probability is what the model was trained to estimate -- but unvalidated
+    in this pipeline, so it carries no weight by default. See
+    ``docs/grafting.md``."""
+    junction_pll: float | None = None
+    """Mean delta PLL within the junction windows only. Expected to be the
+    most discriminating likelihood term, since a graft can be globally
+    unremarkable while having two implausible seams, and seams are where
+    designs fail. Also unvalidated here."""
+    inverse_folding: float | None = None
+    """Sequence-given-backbone log-likelihood delta, if an inverse-folding
+    model was enabled. Requires a predicted structure per design."""
 
     model_name: str = ""
     pll_method: Literal["masked", "wt_marginal", ""] = ""

@@ -35,20 +35,22 @@ Enumerating grafts across a handful of donors produces hundreds to thousands of 
 chimeras. Folding and simulating all of them is not affordable, and geometric filters alone
 do not distinguish a graft that reads like a real protein from one that merely fits.
 
-A protein language model gives a cheap sequence-only prior. Two signals do the work:
+A protein language model gives a cheap sequence-only signal. Two are implemented, and they
+answer different questions:
 
-- **Plausibility** — pseudo-log-likelihood of the chimera versus the unmodified receptor,
-  globally and, more usefully, in windows around each junction. A graft can leave global
-  likelihood almost untouched while producing two implausible seams, and seams are where
-  designs fail.
-- **Direction** — distance between the design's embedding and a thermophilic reference set,
-  which asks whether the design has actually moved toward the thermophilic regime.
+- **Direction** — how far the design's embedding moves toward a thermophilic reference set,
+  relative to wild type. This encodes the actual objective, which likelihood does not.
+- **Plausibility** — pseudo-log-likelihood of the chimera versus the receptor, globally and
+  in windows around each junction. A graft can leave global likelihood almost untouched
+  while producing two implausible seams, and seams are where designs fail.
 
-These answer different questions and the toolkit computes both. Likelihood is the
-better-grounded rejection filter; embedding distance encodes the objective more directly.
-Neither is calibrated against stability, so this stage is a filter that takes thousands of
-designs to tens — not an oracle that picks the winner.
-[docs/grafting.md](docs/grafting.md) goes into the trade-off.
+Direction is the default, because it is the path that has been run end to end with
+structure-prediction follow-up. The likelihood terms are better motivated in principle but
+unvalidated here, so they carry no weight by default — switching is a config change, not a
+code change. [docs/grafting.md](docs/grafting.md) lays out the status of each.
+
+Neither signal is calibrated against stability. This stage is a filter that takes thousands
+of designs down to tens worth simulating, not an oracle that picks the winner.
 
 ## Install
 

@@ -38,6 +38,23 @@ def test_template_has_no_target():
     assert cfg.get("grafting.candidates.exclude_positions") == []
 
 
+@pytest.mark.parametrize("cfg_name", ["template.yaml", "demo_ecoli_phrb.yaml"])
+def test_shipped_configs_do_not_weight_unvalidated_signals(cfg_name):
+    """The likelihood path is implemented but unvalidated in this pipeline.
+
+    Shipped configs must not give it weight, and must not hard-filter on it:
+    a filter on an unvalidated signal discards designs silently, which is the
+    one failure you cannot see in the output. If this test is failing because
+    the PLL path has since been validated, update docs/grafting.md's status
+    table in the same change -- the defaults and that table must agree.
+    """
+    cfg = config_mod.load(REPO_ROOT / "configs" / cfg_name, repo_root=REPO_ROOT)
+    weights = cfg.get("grafting.score.weights")
+    for term in ("delta_pll", "junction_pll"):
+        assert weights.get(term, 0) == 0, f"{cfg_name} weights unvalidated term {term!r}"
+    assert cfg.get("grafting.score.filters.max_pll_drop") is None
+
+
 def test_rejects_bad_project_name(tmp_path):
     path = write(tmp_path, """
         project: {name: "My Target!"}

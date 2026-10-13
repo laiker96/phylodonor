@@ -202,30 +202,59 @@ grafting:
     max_combinations: 2
 
   language_model:
-    # The scorer. `esm2` for naturalness, `esm_if` to additionally ask whether
-    # the chimeric sequence fits the receptor backbone.
     sequence_model: esm2_t33_650M_UR50D
     inverse_folding_model: null       # e.g. esm_if1_gvp4_t16_142M_UR50D
-    # Masked-marginal pseudo-log-likelihood is the default naturalness term.
-    # `wt_marginal` is cheaper and usually adequate for ranking; `masked`
-    # is one forward pass per position and much slower.
+
+    # Reference set for the embedding term: which sequences a design should
+    # look more like than wild type does. `donors` uses the ranked donors;
+    # `thermophile_clades` uses every tip the thermal stage called
+    # thermophilic, which is a larger and less arbitrary reference.
+    embedding_reference: donors        # donors | thermophile_clades
+
+    # Pseudo-log-likelihood estimator, used only if a PLL term carries weight
+    # below. `masked` is one forward pass per position and much slower;
+    # `wt_marginal` reads every position from a single pass, which is far
+    # cheaper but biased exactly at the junctions.
     pll_method: masked                # masked | wt_marginal
     batch_size: 8
     device: auto
 
   score:
-    # Composite ranking. Weights must sum to 1.0. Every term is computed as a
-    # delta against the unmodified receptor, so 0 means "no worse than WT".
+    # Composite ranking. Weights must sum to 1.0. Terms that are unavailable
+    # are dropped and the rest renormalised. Every term is a delta against the
+    # unmodified receptor, so 0 means "no different from WT".
+    #
+    # This default is the combination that has actually been run end to end:
+    # embedding-based ranking, with the surviving designs checked by structure
+    # prediction. See docs/grafting.md for what that does and does not
+    # establish.
     weights:
-      delta_pll: 0.40                 # chimera naturalness vs receptor
-      junction_pll: 0.25              # local plausibility across the seams
-      inverse_folding: 0.20           # sequence-given-backbone, if enabled
-      donor_conservation: 0.15        # is the donor segment itself typical
+      embedding_distance: 0.70        # has the design moved toward thermophiles
+      donor_conservation: 0.30        # is the donor segment itself typical
+
+    # Likelihood-forward alternative. Better motivated in principle -- masked
+    # token probability is what the model was trained on, and the junction
+    # term targets the failure mode that kills grafts -- but NOT yet validated
+    # in this pipeline. Try it against designs you have structural or
+    # experimental results for before trusting it to rank.
+    #
+    # weights:
+    #   delta_pll: 0.30               # whole-sequence plausibility vs receptor
+    #   junction_pll: 0.25            # plausibility across the seams
+    #   embedding_distance: 0.25
+    #   donor_conservation: 0.20
+    #   # inverse_folding: 0.20       # requires inverse_folding_model above
+
     # Junction term is averaged over a window centred on each seam.
     junction_window: 7
+
     # Hard filters applied before ranking.
     filters:
-      max_pll_drop: 0.50              # reject designs well below WT
+      # Reject designs whose per-residue PLL falls this far below wild type.
+      # Null by default: a hard filter on an unvalidated signal silently
+      # discards designs you have no evidence are bad. Set a value only once
+      # the PLL path has been checked against known-good designs.
+      max_pll_drop: null
       forbid_new_cysteines: false     # set true unless designing disulfides
       forbid_n_glycosylation_motifs: false
     keep_top: 20
@@ -233,6 +262,18 @@ grafting:
   # Designs that survive ranking are folded and handed to `dynamics`.
   validate:
     fold: true
+    # Gate on predicted-structure confidence *at the junctions* rather than
+    # over the whole model. A graft that breaks tends to produce a confident
+    # global fold with a disordered seam, so a mean pLDDT over 400 residues
+    # hides exactly what you are looking for.
+    #
+    # Note what this does and does not establish: structure predictors are
+    # permissive about chimeras and will confidently fold sequences that do
+    # not express. Passing this gate rules out structural incoherence; it is
+    # not evidence of stability.
+    junction_confidence:
+      min_plddt: 70                   # null to disable
+      max_pae_angstrom: 10            # across each seam
     minimize_holo: true
     run_dynamics: false               # expensive; opt in deliberately
 
