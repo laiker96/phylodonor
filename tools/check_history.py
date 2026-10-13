@@ -9,11 +9,18 @@ Run before the first push, and in CI on every push:
 
     python tools/check_history.py
 
-Patterns come from ``.private-patterns`` or the ``PRIVATE_PATTERNS``
-environment variable, exactly as in ``check_denylist.py``. Only the project
-patterns are applied here -- the generic ones (absolute paths, credential
-shapes) would match the repository's own source and tooling, which is
-``check_denylist.py``'s job to scan with its own exclusions.
+Two sets of patterns are applied.
+
+The **sequence rule** is built in and needs no configuration: a run of 25+
+characters from the amino-acid alphabet is a protein sequence or a
+nucleotide CDS. This is the rule that matters, because a sequence is the
+thing that must not be disclosed and a wordlist of names cannot catch one.
+
+**Project patterns** from ``.private-patterns`` or ``PRIVATE_PATTERNS`` are
+applied as well when available, and skipped quietly when not. The other
+generic rules in ``check_denylist.py`` (absolute paths, credential shapes)
+are deliberately not applied here: they match the repository's own tooling,
+which that script scans with its own exclusions.
 
 Exit status is 1 if anything matches.
 
@@ -35,7 +42,11 @@ REPO = Path(__file__).resolve().parents[1]
 # Reuse the loader so the two scripts cannot disagree about where patterns
 # come from or how they are parsed.
 sys.path.insert(0, str(REPO / "tools"))
-from check_denylist import load_project_patterns  # noqa: E402
+from check_denylist import BUILTIN, load_project_patterns  # noqa: E402
+
+#: Built-in rules meaningful over history. Only the sequence rule: the
+#: others match this repository's own source.
+_HISTORY_BUILTIN = [(desc, pattern) for desc, pattern in BUILTIN if "sequence" in desc]
 
 
 def _git(*args: str) -> str:
@@ -52,13 +63,15 @@ def main() -> int:
     project = load_project_patterns()
     if not project:
         print(
-            "no project patterns configured (.private-patterns absent, "
-            "PRIVATE_PATTERNS unset) -- nothing to scan for",
+            "note: no project patterns configured (.private-patterns absent, "
+            "PRIVATE_PATTERNS unset); scanning with the built-in sequence rule only",
             file=sys.stderr,
         )
-        return 1
 
-    patterns = [(desc, re.compile(p, re.IGNORECASE)) for desc, p in project]
+    rules = _HISTORY_BUILTIN + project
+    if not rules:  # pragma: no cover - BUILTIN always has the sequence rule
+        return 1
+    patterns = [(desc, re.compile(p, re.IGNORECASE)) for desc, p in rules]
 
     # Each source is scanned separately so a hit names where it lives: a blob
     # needs a history rewrite, a ref name only needs the ref deleted.

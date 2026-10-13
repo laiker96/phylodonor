@@ -22,8 +22,12 @@ in the package is only as good as this rule.
 the full git history. Install the hook before your first commit — a pattern caught at commit
 time is a non-event; one caught after a push means a history rewrite.
 
-If your work involves identifiers that should not reach a public tree, list them in a
-gitignored `.private-patterns` so the hook can catch them:
+The guard's load-bearing rule needs no configuration: any run of 25+ amino-acid letters is
+refused, in any file, along with structure and sequence files by extension. That covers the
+material that actually matters — a target sequence, a structure, a designed variant.
+
+If your work also involves identifiers that should not reach a public tree, list them in a
+gitignored `.private-patterns` so the hook catches those too:
 
 ```
 # .private-patterns -- NEVER COMMIT THIS FILE

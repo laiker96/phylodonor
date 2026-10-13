@@ -61,6 +61,15 @@ BUILTIN: list[tuple[str, str]] = [
         "hardcoded email address",
         r"\b[A-Za-z0-9._%+-]+@(?!example\.(?:com|org)\b)[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b",
     ),
+    # The rule that matters most here: a biological sequence pasted into any
+    # file. A run of 25+ characters drawn only from the amino-acid alphabet
+    # is a protein sequence; the same rule catches a nucleotide CDS, since
+    # A/C/G/T are a subset of those letters.
+    #
+    # 25 is above the 20-character alphabet constant ``ACDEFGHIKLMNPQRSTVWY``
+    # that legitimately appears in sequence-handling code, and long enough
+    # that ordinary identifiers and hex do not reach it.
+    ("embedded biological sequence", r"(?<![A-Z])[ACDEFGHIKLMNPQRSTVWY]{25,}(?![A-Z])"),
 ]
 
 # Paths that must never be tracked, regardless of content. Checked before the
@@ -80,6 +89,14 @@ FORBIDDEN_PATHS: list[tuple[str, str]] = [
     ("environment file", r"(?:^|/)\.env(?:\.|$)"),
     ("redistributed PDF", r"\.pdf$"),
     ("proprietary instrument data", r"\.(?:dxpx|pse|sdfx)$"),
+    # Structure and sequence files are never committed. Inputs are
+    # user-supplied and gitignored, so anything matching here is either
+    # project data or an example that should be generated, not shipped.
+    (
+        "structure coordinates",
+        r"\.(?:pdb|pdb\.gz|cif|mmcif|ent|mol2|sdf|xyz|gro|prmtop|inpcrd|rst7|dcd|xtc)$",
+    ),
+    ("biological sequence file", r"\.(?:fa|fasta|faa|fna|ffn|seq|sto|aln|a3m|hmm|nwk|treefile)$"),
     ("conda env directory", r"(?:^|/)envs/[^/]+/(?:bin|lib|conda-meta)/"),
 ]
 

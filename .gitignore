@@ -34,7 +34,34 @@ results/
 torch_hub/
 esm_cache/
 
-# Structure/sequence inputs are user-supplied, not tracked.
+# Structure and sequence files are never tracked, wherever they sit. Inputs
+# are user-supplied, and the one thing that must not be published is the
+# target's sequence, structure or designed variants.
+*.pdb
+*.cif
+*.mmcif
+*.ent
+*.mol2
+*.sdf
+*.gro
+*.prmtop
+*.inpcrd
+*.rst7
+*.dcd
+*.xtc
+*.fa
+*.fasta
+*.faa
+*.fna
+*.ffn
+*.seq
+*.sto
+*.aln
+*.a3m
+*.hmm
+*.nwk
+*.treefile
+
 data/targets/*
 !data/targets/.gitkeep
 data/reference/*
