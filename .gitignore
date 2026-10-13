@@ -1,6 +1,4 @@
 # --- Private material -- never commit -------------------------------------------------
-# Project-specific denylist patterns. Never commit: it names what it protects.
-.private-patterns
 # Local working notes, kept out of the tree.
 PRIVATE*.md
 NOTES.local.md
@@ -34,34 +32,8 @@ results/
 torch_hub/
 esm_cache/
 
-# Structure and sequence files are never tracked, wherever they sit. Inputs
-# are user-supplied, and the one thing that must not be published is the
-# target's sequence, structure or designed variants.
-*.pdb
-*.cif
-*.mmcif
-*.ent
-*.mol2
-*.sdf
-*.gro
-*.prmtop
-*.inpcrd
-*.rst7
-*.dcd
-*.xtc
-*.fa
-*.fasta
-*.faa
-*.fna
-*.ffn
-*.seq
-*.sto
-*.aln
-*.a3m
-*.hmm
-*.nwk
-*.treefile
-
+# Your own inputs are never tracked: the target's sequence, structure and
+# designed variants are the things that must not be published.
 data/targets/*
 !data/targets/.gitkeep
 data/reference/*

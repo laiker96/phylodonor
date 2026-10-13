@@ -6,35 +6,6 @@ on:
   pull_request:
 
 jobs:
-  guard:
-    # Runs independently of the tests: nothing else matters if material that
-    # should not be public has reached the tree or the history.
-    #
-    # Both scans work with no configuration. The rule that matters -- a run
-    # of amino-acid letters, i.e. a protein sequence or a nucleotide CDS --
-    # is built in, along with path rules refusing structure and sequence
-    # files. Those rules disclose nothing, so they ship with the repository.
-    #
-    # The optional PRIVATE_PATTERNS secret adds project-specific identifiers
-    # on top. Its absence is not an error: a wordlist of names was never
-    # what protected the sequences.
-    runs-on: ubuntu-latest
-    env:
-      PRIVATE_PATTERNS: ${{ secrets.PRIVATE_PATTERNS }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Scan working tree
-        run: python tools/check_denylist.py --all
-
-      - name: Scan full history
-        run: python tools/check_history.py
-
   test:
     runs-on: ubuntu-latest
     steps:

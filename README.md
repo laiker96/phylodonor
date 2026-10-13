@@ -113,42 +113,20 @@ phylodonor grafting  rank  --config configs/my_target.yaml
 Reference databases (UniRef, growth-temperature datasets) are **not** downloaded for you;
 point the config at local copies. See [docs/data_sources.md](docs/data_sources.md).
 
-## Keeping sequences and structures out of the repository
+## Keeping sequences out of the repository
 
-Protein engineering projects are usually confidential well before they are published, and
-the things that must not leak are concrete: **the target's sequence, its structure, and any
-designed variant.** Everything else — a name, an accession, a domain boundary — is either
-already public or harmless on its own.
+The pipeline is generic: no sequence, structure or accession needs to live in the code, and
+none does. Your inputs are read from paths in your config, and those directories are
+gitignored.
 
-The pipeline is built so none of it ever needs to be in the code. Sequences, structures and
-design tables are read from paths in your config, and the input directories are gitignored.
-
-`tools/check_denylist.py` turns that into a guarantee. It runs as a pre-commit hook and in
-CI, over the working tree *and* the full git history, and refuses:
-
-- **Any run of 25+ amino-acid letters, in any file.** This is the rule that matters. It
-  catches a sequence pasted into a script, a test, a comment or a commit message, and
-  because A/C/G/T are a subset of the same alphabet it catches nucleotide constructs too.
-  The threshold sits above the 20-character alphabet constant that sequence-handling code
-  legitimately contains.
-- **Structure and sequence files by extension** — `.pdb`, `.cif`, `.fa`, `.hmm` and the
-  rest. Inputs are user-supplied, so anything matching is project data.
-- Personal absolute paths, credential shapes and REPL history files.
-
-None of those rules name anything, so they ship with the repository and work with no
-configuration. Project-specific identifiers can be added on top via a gitignored
-`.private-patterns` file or the `PRIVATE_PATTERNS` CI secret, but that is defence in depth —
-a wordlist of names was never what protected the sequences.
+One pre-commit hook backs that up, because a push to a public remote cannot be undone. It
+refuses any run of 25+ amino-acid letters in any file, and structure or sequence files by
+extension:
 
 ```bash
-pre-commit install                      # do this before your first commit
-python tools/check_denylist.py --all    # working tree
-python tools/check_history.py           # every commit, message, path and ref
+pre-commit install                      # once
+python tools/check_denylist.py --all    # or check by hand
 ```
-
-Install the hook before your first commit. A sequence caught at commit time is a non-event;
-the same sequence caught after a push means rewriting history — and if it was pushed to a
-public remote, treating it as disclosed regardless.
 
 ## Citing
 

@@ -18,22 +18,12 @@ This is what makes the toolkit reusable across targets, and it is also what make
 work on a confidential project in a public repository — the guarantee that no target data is
 in the package is only as good as this rule.
 
-`tools/check_denylist.py` runs as a pre-commit hook and in CI, over the working tree *and*
-the full git history. Install the hook before your first commit — a pattern caught at commit
-time is a non-event; one caught after a push means a history rewrite.
+One pre-commit hook enforces the part that cannot be undone: it refuses any run of 25+
+amino-acid letters, and structure or sequence files by extension. Install it before your
+first commit — a push to a public remote is permanent.
 
-The guard's load-bearing rule needs no configuration: any run of 25+ amino-acid letters is
-refused, in any file, along with structure and sequence files by extension. That covers the
-material that actually matters — a target sequence, a structure, a designed variant.
-
-If your work also involves identifiers that should not reach a public tree, list them in a
-gitignored `.private-patterns` so the hook catches those too:
-
-```
-# .private-patterns -- NEVER COMMIT THIS FILE
-my-internal-codename
-A0A0E0ME00
-some[a-z]*identifier
+```bash
+pre-commit install
 ```
 
 ## Adding a stage or step
