@@ -257,7 +257,17 @@ grafting:
       max_pll_drop: null
       forbid_new_cysteines: false     # set true unless designing disulfides
       forbid_n_glycosylation_motifs: false
-    keep_top: 20
+
+    # How many designs to carry forward. Null keeps every design that passed
+    # the filters, ranked but not truncated.
+    #
+    # Null is the right default for what this stage actually is: a tool for
+    # discarding grafts that cannot work, not one that identifies the best
+    # one. Truncating at a fixed rank assumes the ordering within the
+    # survivors is trustworthy, and it is not -- no term here is calibrated
+    # against measured stability. Set this to your expression capacity when
+    # you are ready to order constructs, and let that be the cut.
+    keep_top: null
 
   # Designs that survive ranking are folded and handed to `dynamics`.
   validate:

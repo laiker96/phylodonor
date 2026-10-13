@@ -4,6 +4,21 @@ This is the design stage, and the one where the toolkit makes the most consequen
 choices. Everything upstream is reconnaissance; this is where candidate proteins get
 proposed and triaged.
 
+## What this stage is for
+
+It discards grafts that cannot work. It does not find the best one.
+
+Only expression and measurement can do that, and nothing here is calibrated against
+measured stability. So the useful question about this stage is not "did it rank the winner
+first" but "did it throw away anything good" — **false negatives are the error that
+matters**. A mediocre design that survives costs you one well in a plate. A good design
+silently filtered out is simply gone, and nothing in the output tells you it was ever
+there.
+
+That is why the filters are permissive, why every rejection is written to `designs.tsv`
+with its reason, why the manifest carries a per-filter tally, and why `keep_top` defaults to
+null instead of truncating at a fixed rank. Your expression capacity is the real cut.
+
 ## The problem
 
 You have a receptor (your target) and a handful of thermophilic donors with per-domain

@@ -184,7 +184,7 @@ grafting:
       max_pll_drop: null            # PLL path not yet validated here
       forbid_new_cysteines: true    # not designing disulfides in this demo
       forbid_n_glycosylation_motifs: false
-    keep_top: 20
+    keep_top: null                  # keep every survivor; see template.yaml
 
   validate:
     # Fold the survivors and gate on predicted-structure confidence at the

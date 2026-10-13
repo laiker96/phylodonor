@@ -52,12 +52,16 @@ default and worth enabling once the candidate set is down to tens.
 
 What the language model does not tell you
 -----------------------------------------
-Likelihood is not stability. The model has no notion of your assay, your
-expression host, or your cofactor. It reliably rejects nonsense and it ranks
-survivors sensibly, but the ordering within the top handful is not
-trustworthy enough to skip simulation or experiment. Treat this stage as a
-filter that takes thousands of designs to tens, not as an oracle that picks
-the winner.
+Neither signal is stability. The model has no notion of your assay, your
+expression host, or your cofactor. It reliably rejects nonsense, but the
+ordering within the survivors is not trustworthy enough to skip simulation,
+let alone experiment.
+
+So this stage discards grafts that cannot work; it does not identify the one
+that will. That makes false negatives -- a good design filtered out silently
+-- the error worth guarding against, which is why the filters are permissive,
+every rejection is recorded with a reason, and nothing is truncated at a
+fixed rank by default. See :mod:`phylodonor.grafting.rank`.
 
 Stage contract
 --------------
