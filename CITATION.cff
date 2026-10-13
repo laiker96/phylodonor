@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "phylodonor: phylogeny-guided donor grafting for protein thermostability"
+abstract: >-
+  A configuration-driven pipeline that identifies thermophilic homologs of a
+  target enzyme, ranks them as donors of stabilising structural elements, and
+  uses a protein language model to prioritise chimeric designs before
+  structural and dynamical validation.
+type: software
+authors:
+  - family-names: Laiker
+    given-names: Ian
+    orcid: "https://orcid.org/0000-0000-0000-0000"  # TODO: fill in
+version: 0.1.0
+license: MIT
+repository-code: "https://github.com/laiker96/phylodonor"  # TODO: confirm
+keywords:
+  - protein engineering
+  - thermostability
+  - protein language model

@@ -1,0 +1,206 @@
+# Worked example: E. coli DNA photolyase (PhrB, UniProt P00914).
+#
+# A fully public target, chosen because it is well studied, has an
+# experimental structure, carries two cofactors (FAD and MTHF), and has
+# thermophilic and hyperthermophilic relatives -- which is exactly the
+# situation this pipeline is built for.
+#
+# This config is a demonstration of the schema, not a validated design
+# campaign. The domain boundaries and exclusion lists below are taken from
+# the literature and are approximate; check them against the structure before
+# drawing conclusions.
+#
+# Inputs you must supply (none are committed -- see docs/data_sources.md):
+#   data/targets/P00914.fa      from UniProt
+#   data/reference/tempura.csv  from the TEMPURA database
+#   search.database             a local MMseqs2 index
+
+project:
+  name: demo_ecoli_phrb
+  description: >-
+    Demonstration run: class I CPD photolyase from Escherichia coli, a public
+    target used to exercise every stage of the pipeline end to end.
+
+target:
+  accession: P00914
+  fasta: data/targets/P00914.fa
+  structure: null              # fold from sequence, or point at PDB 1DNP
+  tm_celsius: null
+
+domains:
+  # Class I CPD photolyases have an N-terminal α/β antenna-binding domain and
+  # a C-terminal α-helical catalytic domain joined by a long linker.
+  # Approximate, from the 1DNP structure.
+  definitions:
+    - name: antenna
+      start: 1
+      end: 131
+    - name: linker
+      start: 132
+      end: 203
+    - name: catalytic
+      start: 204
+      end: 471
+  hmm_profiles:
+    - PF00875               # DNA_photolyase
+    - PF03441               # FAD_binding_7
+
+classification:
+  # Photolyase/cryptochrome is a large family; class I CPD photolyases must
+  # not be aligned together with class II, 6-4 photolyases or cryptochromes.
+  enabled: true
+  subfamily_name: class_I_cpd
+  require:
+    - kind: length
+      min: 380
+      max: 560
+    - kind: residue
+      position: 377          # conserved catalytic tryptophan, target numbering
+      allowed: [W]
+
+search:
+  tool: mmseqs2
+  database: null             # e.g. /data/db/uniref50
+  evalue: 1.0e-5
+  min_seq_id: 0.25
+  coverage: 0.70
+  cov_mode: 0
+  max_hits: 20000
+  threads: 8
+
+phylogeny:
+  aligner: hmmalign
+  trim:
+    tool: trimal
+    gap_threshold: 0.30
+  tree:
+    tool: iqtree
+    model: auto
+    ultrafast_bootstrap: 1000
+    sh_alrt: 1000
+    threads: 8
+  outgroup: []              # midpoint rooting for the demo
+
+thermal:
+  sources:
+    - name: tempura
+      path: null            # e.g. data/reference/tempura.csv
+  regimes:
+    psychrophile: {max: 20}
+    mesophile: {min: 20, max: 45}
+    thermophile: {min: 45, max: 80}
+    hyperthermophile: {min: 80}
+  min_clade_size: 5
+  min_clade_purity: 0.70
+
+donors:
+  # E. coli grows at 37 C, so a 15 C margin puts donors at >= 52 C.
+  min_ogt_delta: 15
+  structural_aligner: usalign
+  weights:
+    sequence_identity: 0.25
+    domain_tmscore: 0.35
+    ogt_delta: 0.25
+    coverage: 0.15
+  keep_top: 10
+
+holo:
+  cofactors:
+    - resname: FAD
+      donor_pdb: 1DNP        # E. coli photolyase, 2.3 A
+      donor_chain: A
+    - resname: MHF           # 5,10-methenyltetrahydrofolate antenna
+      donor_pdb: 1DNP
+      donor_chain: A
+  minimize:
+    engine: openmm
+    forcefield: amber14-all.xml
+    water_model: null
+    max_iterations: 5000
+    restrain_backbone: true
+
+folding:
+  engine: esmfold2
+  chunk_size: 128
+  device: auto
+
+dynamics:
+  engine: openmm
+  forcefield: amber14-all.xml
+  water_model: amber14/tip3p.xml
+  salt_concentration_molar: 0.15
+  constant_temperature:
+    temperatures_kelvin: [300, 340, 370]
+    nanoseconds: 100
+    replicates: 3
+  ramp:
+    start_kelvin: 300
+    end_kelvin: 500
+    nanoseconds: 50
+  timestep_femtoseconds: 2
+  report_interval_picoseconds: 10
+
+grafting:
+  donors: []                # use the ranked output of the donors stage
+
+  candidates:
+    candidate_regions: []   # empty = everything superposable and not excluded
+
+    # Catalytic and cofactor-binding residues. Grafting through these would
+    # produce a well-scoring, catalytically dead enzyme -- the language model
+    # cannot detect that, so this list is the only protection.
+    # Approximate; verify against 1DNP before relying on it.
+    exclude_positions: [231, 232, 277, 306, 307, 359, 377, 382, 384, 386]
+    exclude_cofactor_contacts: true
+    cofactor_contact_cutoff_angstrom: 4.5
+
+    junction_rules:
+      require_loop: true
+      max_backbone_rmsd_angstrom: 1.5
+      min_relative_sasa: 0.25
+      flank_residues: 3
+
+    max_length_delta: 12
+    min_segment_length: 4
+    max_segment_length: 40
+    max_combinations: 2
+
+  language_model:
+    sequence_model: esm2_t33_650M_UR50D
+    inverse_folding_model: null
+    pll_method: masked
+    batch_size: 8
+    device: auto
+
+  score:
+    weights:
+      delta_pll: 0.40
+      junction_pll: 0.25
+      inverse_folding: 0.20
+      donor_conservation: 0.15
+    junction_window: 7
+    filters:
+      max_pll_drop: 0.50
+      forbid_new_cysteines: true    # not designing disulfides in this demo
+      forbid_n_glycosylation_motifs: false
+    keep_top: 20
+
+  validate:
+    fold: true
+    minimize_holo: true
+    run_dynamics: false
+
+scoring:
+  conservation:
+    model: esm1v
+    ensemble: 5
+  solubility:
+    enabled: true
+    tool: camsol
+  aggregation:
+    enabled: true
+    tool: aggrescan3d
+
+paths:
+  results_root: results
+  scratch: .scratch

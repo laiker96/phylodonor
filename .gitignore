@@ -1,0 +1,62 @@
+# --- Private material -- never commit -------------------------------------------------
+# Project-specific denylist patterns. Never commit: it names what it protects.
+.private-patterns
+# Local working notes, kept out of the tree.
+PRIVATE*.md
+NOTES.local.md
+
+# REPL / shell history -- routinely leaks paths and data.
+.Rhistory
+.Rapp.history
+.bash_history
+.zsh_history
+.python_history
+
+# Secrets
+.env
+.env.*
+*.pem
+*.key
+credentials*
+
+# --- generated --------------------------------------------------------------
+envs/*/
+external/
+logs/
+results/
+.scratch/
+*.log
+
+# Model weights and caches
+*.pt
+*.ckpt
+.cache/
+torch_hub/
+esm_cache/
+
+# Structure/sequence inputs are user-supplied, not tracked.
+data/targets/*
+!data/targets/.gitkeep
+data/reference/*
+!data/reference/.gitkeep
+structures/*/
+!structures/.gitkeep
+
+# --- python -----------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# --- os / editor ------------------------------------------------------------
+.DS_Store
+.idea/
+.vscode/
+*.swp

@@ -1,0 +1,255 @@
+# phylodonor target configuration -- documented template.
+#
+# Copy this file, fill it in, and pass it to every stage:
+#
+#     phylodonor homologs search --config configs/my_target.yaml
+#
+# Nothing in src/ hardcodes a protein, an accession, a residue number or a
+# path. If you find yourself wanting to edit code to run a new target, that is
+# a bug -- the missing knob belongs here instead.
+
+project:
+  # Short slug used for output directory names and file prefixes.
+  name: my_target
+  # Free text, for provenance only.
+  description: >-
+    One or two lines on what this target is and what you are trying to do to it.
+
+target:
+  # Stable public identifier for the protein you want to engineer.
+  # Used in reports and manifests; never used to fetch anything you have not
+  # also pointed at explicitly below.
+  accession: P00000
+  # Query sequence. Single-record FASTA, relative to the repo root.
+  fasta: data/targets/my_target.fa
+  # Optional experimental or predicted structure for the apo monomer.
+  # Leave null to fold from sequence (see `folding`).
+  structure: null
+  # Optional: measured melting temperature in degrees C, if you have one.
+  # Used only to annotate plots. Null is fine.
+  tm_celsius: null
+
+domains:
+  # Domain decomposition of the target, in target-sequence coordinates
+  # (1-based, inclusive). Used to score donors per domain rather than only
+  # globally, and to restrict logo plots.
+  #
+  # Ranges are target-specific by definition -- there is no sensible default.
+  definitions: []
+  # - name: n_terminal
+  #   start: 1
+  #   end: 130
+  # - name: catalytic
+  #   start: 131
+  #   end: 437
+  #
+  # Optional Pfam/HMM accessions used to confirm the decomposition.
+  hmm_profiles: []
+
+classification:
+  # Many protein families split into subfamilies that must not be mixed in a
+  # single alignment. Define that split declaratively here.
+  #
+  # Each rule is applied to the HMM-aligned homolog set; a hit must satisfy
+  # every `require` entry to be kept as in-family.
+  enabled: false
+  subfamily_name: null
+  require: []
+  # - kind: residue          # a marker residue at a target coordinate
+  #   position: 377          # target numbering; mapped through the alignment
+  #   allowed: [W]
+  # - kind: motif            # a regex over the aligned, ungapped sequence
+  #   pattern: "C[ST]x{2}W"
+  # - kind: length
+  #   min: 300
+  #   max: 600
+
+search:
+  # Homolog search. The database is a local path you provide -- the pipeline
+  # does not download reference databases for you.
+  tool: mmseqs2
+  database: null              # e.g. /data/db/uniref90
+  evalue: 1.0e-5
+  min_seq_id: 0.25
+  coverage: 0.70
+  cov_mode: 0
+  max_hits: 20000
+  threads: 8
+
+phylogeny:
+  aligner: hmmalign           # hmmalign | mafft
+  trim:
+    tool: trimal
+    gap_threshold: 0.30
+  tree:
+    tool: iqtree
+    model: auto               # or an explicit model, e.g. LG+F+G4
+    ultrafast_bootstrap: 1000
+    sh_alrt: 1000
+    threads: 8
+  # Accessions to use as the outgroup for rooting. Leave empty for midpoint.
+  outgroup: []
+
+thermal:
+  # Growth-temperature annotation for each homolog's source organism.
+  # Sources are public datasets; see docs/data_sources.md for how to fetch
+  # them. Paths are yours to provide.
+  sources:
+    - name: tempura
+      path: null              # e.g. data/reference/tempura.csv
+    - name: ogtfinder
+      path: null
+  # Optimal-growth-temperature bands, in degrees C. Edit to taste; these are
+  # the conventional microbiological cut points, not a biological law.
+  regimes:
+    psychrophile: {max: 20}
+    mesophile: {min: 20, max: 45}
+    thermophile: {min: 45, max: 80}
+    hyperthermophile: {min: 80}
+  # Minimum number of annotated tips for a clade to be called as a regime.
+  min_clade_size: 5
+  # Fraction of a clade's annotated tips that must share a regime.
+  min_clade_purity: 0.70
+
+donors:
+  # Ranking of thermophilic homologs as donors of stabilising structure.
+  # Candidates must beat the target's own regime by this margin.
+  min_ogt_delta: 15
+  # Structural superposition tool used for domain-level comparison.
+  structural_aligner: usalign
+  # Weights for the composite donor score. Must sum to 1.0.
+  weights:
+    sequence_identity: 0.25
+    domain_tmscore: 0.35
+    ogt_delta: 0.25
+    coverage: 0.15
+  keep_top: 10
+
+holo:
+  # Cofactor transfer. Donor crystals are fetched from the RCSB PDB by ID.
+  cofactors: []
+  # - resname: FAD
+  #   donor_pdb: 1IQR
+  #   donor_chain: A
+  minimize:
+    engine: openmm            # openmm | amber
+    forcefield: amber14-all.xml
+    water_model: null         # null = vacuum minimisation
+    max_iterations: 5000
+    restrain_backbone: true
+
+folding:
+  # Used when `target.structure` is null, and for designed variants.
+  engine: esmfold2
+  chunk_size: 128
+  device: auto                # auto | cpu | cuda
+
+dynamics:
+  engine: openmm              # openmm | amber
+  forcefield: amber14-all.xml
+  water_model: amber14/tip3p.xml
+  salt_concentration_molar: 0.15
+  # Constant-temperature production runs.
+  constant_temperature:
+    temperatures_kelvin: [300, 340, 370]
+    nanoseconds: 100
+    replicates: 3
+  # Linear heating ramp, for apparent-unfolding comparisons.
+  ramp:
+    start_kelvin: 300
+    end_kelvin: 500
+    nanoseconds: 50
+  timestep_femtoseconds: 2
+  report_interval_picoseconds: 10
+
+grafting:
+  # Transplanting structural elements from a thermophilic donor into the
+  # receptor (your target), and ranking the candidates with a protein
+  # language model before anything expensive is run on them.
+  #
+  # The receptor is always `target` above. Donors come from the `donors`
+  # stage, or can be named explicitly here.
+  donors: []                  # empty = use the ranked output of `donors`
+
+  candidates:
+    # Which receptor regions may be replaced. Empty = every region that the
+    # structural alignment covers and that is not excluded below.
+    candidate_regions: []
+    # - name: c_terminal_helix
+    #   start: 419
+    #   end: 431
+
+    # Residues that must never be touched: catalytic machinery, cofactor
+    # contacts, binding interfaces. Target numbering. This is the single most
+    # important field in this section -- an unconstrained enumeration will
+    # happily propose grafts straight through the active site.
+    exclude_positions: []
+    exclude_cofactor_contacts: true
+    cofactor_contact_cutoff_angstrom: 4.5
+
+    # Junctions should fall in flexible, surface-exposed, non-helical places.
+    junction_rules:
+      require_loop: true              # DSSP coil/turn only
+      max_backbone_rmsd_angstrom: 1.5 # receptor vs donor at the junction
+      min_relative_sasa: 0.25
+      flank_residues: 3               # context kept on each side
+
+    # Length bookkeeping.
+    max_length_delta: 12              # residues, |donor seg| - |receptor seg|
+    min_segment_length: 4
+    max_segment_length: 40
+    # Cap on how many segments one design may combine.
+    max_combinations: 2
+
+  language_model:
+    # The scorer. `esm2` for naturalness, `esm_if` to additionally ask whether
+    # the chimeric sequence fits the receptor backbone.
+    sequence_model: esm2_t33_650M_UR50D
+    inverse_folding_model: null       # e.g. esm_if1_gvp4_t16_142M_UR50D
+    # Masked-marginal pseudo-log-likelihood is the default naturalness term.
+    # `wt_marginal` is cheaper and usually adequate for ranking; `masked`
+    # is one forward pass per position and much slower.
+    pll_method: masked                # masked | wt_marginal
+    batch_size: 8
+    device: auto
+
+  score:
+    # Composite ranking. Weights must sum to 1.0. Every term is computed as a
+    # delta against the unmodified receptor, so 0 means "no worse than WT".
+    weights:
+      delta_pll: 0.40                 # chimera naturalness vs receptor
+      junction_pll: 0.25              # local plausibility across the seams
+      inverse_folding: 0.20           # sequence-given-backbone, if enabled
+      donor_conservation: 0.15        # is the donor segment itself typical
+    # Junction term is averaged over a window centred on each seam.
+    junction_window: 7
+    # Hard filters applied before ranking.
+    filters:
+      max_pll_drop: 0.50              # reject designs well below WT
+      forbid_new_cysteines: false     # set true unless designing disulfides
+      forbid_n_glycosylation_motifs: false
+    keep_top: 20
+
+  # Designs that survive ranking are folded and handed to `dynamics`.
+  validate:
+    fold: true
+    minimize_holo: true
+    run_dynamics: false               # expensive; opt in deliberately
+
+scoring:
+  # Sequence-level predictors applied to the target and to designed variants.
+  conservation:
+    model: esm1v
+    ensemble: 5
+  solubility:
+    enabled: true
+    tool: camsol
+  aggregation:
+    enabled: true
+    tool: aggrescan3d
+
+paths:
+  # All outputs land under this root, namespaced by project.name.
+  results_root: results
+  # Scratch for large intermediates you do not want to keep.
+  scratch: .scratch

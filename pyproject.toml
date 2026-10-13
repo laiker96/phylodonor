@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "phylodonor"
+version = "0.1.0.dev0"
+description = "Phylogeny-guided donor grafting for protein thermostability, ranked by a protein language model."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+keywords = ["protein engineering", "thermostability", "phylogenetics", "protein language model", "molecular dynamics"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "Topic :: Scientific/Engineering :: Bio-Informatics",
+  "Programming Language :: Python :: 3",
+]
+dependencies = [
+  "pyyaml>=6.0",
+  "biopython>=1.83",
+  "numpy>=1.26",
+  "pandas>=2.1",
+]
+
+[project.optional-dependencies]
+# Heavy, GPU-dependent, or licence-encumbered extras stay opt-in so that a
+# plain `pip install -e .` works anywhere.
+lm = ["torch>=2.1", "fair-esm>=2.0"]
+structure = ["gemmi>=0.6", "mdtraj>=1.9"]
+dynamics = ["openmm>=8.1"]
+dev = ["pytest>=8.0", "ruff>=0.8", "pre-commit>=3.6"]
+
+[project.scripts]
+phylodonor = "phylodonor.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

@@ -1,0 +1,53 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  guard:
+    # Runs first and independently: nothing else matters if private material
+    # has leaked into the tree.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Denylist scan (working tree)
+        env:
+          PRIVATE_PATTERNS: ${{ secrets.PRIVATE_PATTERNS }}
+        run: python tools/check_denylist.py --all --require-project-denylist
+      - name: Denylist scan (full history)
+        env:
+          PRIVATE_PATTERNS: ${{ secrets.PRIVATE_PATTERNS }}
+        run: |
+          # The history is the repo. A clean checkout is not enough.
+          python - <<'PY'
+          import os, re, subprocess, sys
+          raw = os.environ.get("PRIVATE_PATTERNS", "")
+          pats = [re.compile(p.strip(), re.I) for p in raw.splitlines()
+                  if p.strip() and not p.startswith("#")]
+          if not pats:
+              sys.exit("no PRIVATE_PATTERNS configured")
+          log = subprocess.run(["git", "log", "--all", "-p", "--no-color"],
+                               capture_output=True, text=True, errors="ignore").stdout
+          hits = sorted({p.pattern for p in pats if p.search(log)})
+          if hits:
+              sys.exit("pattern(s) found in git history: " + ", ".join(hits))
+          print("history clean")
+          PY
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e ".[dev]"
+      - run: ruff check .
+      - run: pytest
