@@ -105,13 +105,38 @@ donors:
   keep_top: 10
 
 holo:
+  protein_chain: A
   cofactors:
+    # The catalytic flavin sits in the core of the C-terminal domain, so the
+    # whole-protein superposition places it well.
     - resname: FAD
-      donor_pdb: 1DNP        # E. coli photolyase, 2.3 A
+      donor_pdb: 1DNP          # E. coli photolyase, 2.3 A
       donor_chain: A
-    - resname: MHF           # 5,10-methenyltetrahydrofolate antenna
+      charge: -2
+      min_fit_pairs: 40
+
+    # The antenna chromophore sits in a shallow cleft between the two
+    # domains, not in the core. The globally best transform is not the one
+    # that places that cleft best, so refit on the pocket before copying --
+    # this is exactly the case pocket_cutoff_angstrom exists for.
+    - resname: MHF             # 5,10-methenyltetrahydrofolate
       donor_pdb: 1DNP
       donor_chain: A
+      charge: -2
+      pocket_cutoff_angstrom: 5.0
+      min_fit_pairs: 40
+
+  # 1DNP is substrate-free, so there is nothing to annotate from it. With a
+  # DNA-bound donor you would add, e.g.:
+  # annotation_ligands:
+  #   - label: dna
+  #     resnames: [DA, DT, DC, DG]
+  #     from_donor: FAD
+  annotation_ligands: []
+
+  contacts:
+    cutoff_angstrom: 4.0
+
   minimize:
     engine: openmm
     forcefield: amber14-all.xml

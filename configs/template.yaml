@@ -126,11 +126,44 @@ donors:
   keep_top: 10
 
 holo:
-  # Cofactor transfer. Donor crystals are fetched from the RCSB PDB by ID.
+  # Chain the normalised receptor is written on. Cofactors are assigned the
+  # following letters automatically unless `out_chain` says otherwise.
+  protein_chain: A
+
+  # Cofactors to transfer into the receptor. Donor crystals are fetched from
+  # the RCSB PDB by id and cached per run.
+  #
+  # Pick donors for resolution and for having the cofactor fully ordered. A
+  # predicted structure is not usable as a donor -- predictors place
+  # cofactors poorly or not at all, which is the reason this stage exists.
   cofactors: []
   # - resname: FAD
-  #   donor_pdb: 1IQR
-  #   donor_chain: A
+  #   donor_pdb: 1IQR          # experimental holo structure of a homolog
+  #   donor_chain: null        # protein chain to fit on; null = first found
+  #   donor_ligand_chain: null # chain the cofactor sits on; null = search all
+  #   out_chain: null          # null = assigned automatically
+  #   charge: -2               # formal charge, for force-field setup
+  #   min_fit_pairs: 40        # refuse a whole-protein fit below this
+  #   # Set only for a cofactor in a local pocket where the globally best
+  #   # superposition is not the one that places that pocket best. Refits on
+  #   # the donor's pocket residues alone: worse global RMSD, better cofactor
+  #   # placement, which is the right trade when the output is coordinates.
+  #   pocket_cutoff_angstrom: null
+
+  # Ligands transferred for contact annotation only -- nucleic acids,
+  # substrate analogues, inhibitors. They go into a separate model and are
+  # never minimised or simulated: they are evidence about where the substrate
+  # binds, not part of the enzyme.
+  annotation_ligands: []
+  # - label: dna
+  #   resnames: [DA, DT, DC, DG]
+  #   from_donor: FAD          # reuse this cofactor's already-fitted donor
+  #   preserve_chains: true    # keep strands on separate chains
+
+  # Per-residue contact annotation written after minimisation.
+  contacts:
+    cutoff_angstrom: 4.0
+
   minimize:
     engine: openmm            # openmm | amber
     forcefield: amber14-all.xml
