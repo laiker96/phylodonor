@@ -3,20 +3,57 @@
 The architecture, configuration schema and stage contracts are settled. Stages are being
 implemented in dependency order, easiest first, so that a runnable slice exists early.
 
+## Simulation is not on the critical path
+
+Worth stating first, because it shapes everything below.
+
+**Minimisation and molecular dynamics are different things.** Minimisation is a
+deterministic descent to a nearby energy minimum: seconds to minutes, no trajectory. MD
+integrates motion over time: GPU-days for a panel of designs. The original codebase treated
+them as one concern; they are not.
+
+Minimisation is in `holo`, and even there it is optional — the contact table that `grafting`
+consumes does not need it, since relaxation shifts atoms by tenths of an angstrom and rarely
+changes which residues are in contact.
+
+**MD is opt-in and off the critical path.** What it was providing:
+
+| Was used for | Replaced by |
+|---|---|
+| A relaxed holo model | Restrained minimisation, which is not MD |
+| Per-residue RMSF, for junction placement | DSSP secondary structure, relative SASA, and per-residue predicted confidence (pLDDT), which is itself a disorder signal |
+| Heating-ramp apparent unfolding, for ranking | Nothing — see below |
+
+That last row is the substantive decision. Short MD is an unreliable estimator of ΔTm: 100 ns
+of a 400-residue protein samples essentially none of the unfolding landscape, and a ramp
+protocol's apparent transition depends heavily on heating rate with no clean mapping to a
+measured melting temperature. Since this pipeline's job is to *discard* grafts that cannot
+work — and a bad graft is already caught by the language model, the clash detector and the
+structure-prediction gate, all orders of magnitude cheaper — MD would only offer to rank,
+which is the thing not worth trusting. Experiment decides that.
+
+Consequences: the Amber dependency disappears from the critical path, so the only
+licence-encumbered hard dependency is gone; `holo` is standalone; and the whole pipeline runs
+on a laptop plus a folding server.
+
+MD stays in the tree as an opt-in stage. It earns its place for a specific mechanistic
+question ("does this loop open before the core melts?"), or retrospectively if measured Tm
+values ever arrive and the correlation is worth checking.
+
 ## Order
 
 | # | Stage | Status | Notes |
 |---|---|---|---|
-| 1 | `holo` | in progress | Cofactor transfer from donor crystals, protonation, restrained minimisation. Few dependencies, so it lands first. |
-| 2 | folding helper | in progress | Sequence → structure, used by `holo` and `grafting`. A thin wrapper over an existing predictor rather than its own stage. |
-| 3 | `dynamics` | planned | Constant-temperature and heating-ramp protocols. Single implementation behind `dynamics.engine`, so that OpenMM and Amber share one analysis path instead of two. |
-| 4 | `donors` | planned | Structural superposition and per-domain donor ranking. Needs the region-map abstraction below. |
-| 5 | `grafting` | planned | Candidate enumeration and language-model triage. Interfaces are already fixed in `src/phylodonor/grafting/`; see [grafting.md](grafting.md). |
-| 6 | `homologs`, `phylogeny`, `thermal` | planned | The reconnaissance half. Largest piece of work, and the one that most needs the region map. |
-| 7 | `scoring`, `viz` | planned | Predictors and figures. Useful throughout but blocking nothing. |
+| 1 | `holo` | **done** | Cofactor transfer, optional restrained minimisation, contact annotation. |
+| 2 | folding helper | next | Sequence → structure, used by `holo` and `grafting`. A thin wrapper over an existing predictor rather than its own stage. |
+| 3 | `donors` | planned | Structural superposition and per-domain donor ranking. Needs the region-map abstraction below. |
+| 4 | `grafting` | planned | Candidate enumeration and language-model triage. Interfaces are fixed in `src/phylodonor/grafting/`; see [grafting.md](grafting.md). |
+| 5 | `homologs`, `phylogeny`, `thermal` | planned | The reconnaissance half. Largest piece of work, and the one that most needs the region map. |
+| 6 | `scoring`, `viz` | planned | Predictors and figures. Useful throughout but blocking nothing. |
+| — | `dynamics` | opt-in | Not required by any other stage. Port when a question needs it. |
 
 Stages 1–4 form a coherent tool on their own: fold → build a cofactor-bound model → find
-thermophilic donors → test them in simulation. That is the first milestone.
+thermophilic donors → triage grafts. That is the first milestone, and it needs no GPU.
 
 ## The region-map abstraction
 

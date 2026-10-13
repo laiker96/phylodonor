@@ -5,11 +5,17 @@ what you may do with the results. None are bundled; all are installed by you.
 
 Read this before using the pipeline in a commercial setting.
 
+**Amber is not required.** The original codebase used Amber/pmemd for minimisation and
+dynamics; neither is on the critical path here. Minimisation uses OpenMM and is optional,
+and molecular dynamics is an opt-in stage no other stage depends on (see
+[roadmap.md](roadmap.md)). If you have an Amber licence and want to use it, nothing stops
+you, but no part of the pipeline assumes it and the repository never tracks its source
+archive.
+
 ## Licence-restricted — check before commercial use
 
 | Tool | Used by | Restriction |
 |---|---|---|
-| **Amber / pmemd** | `dynamics` (Amber engine) | Commercial licence required. The source archive must be obtained from the Amber distributors and supplied as a local path; it is never tracked here. The OpenMM engine is a free alternative covering the same protocols. |
 | **PyRosetta** | optional scoring | Free for non-commercial and academic use only. A commercial licence is separate. |
 | **CamSol** | `scoring.solubility` | The published method's fitted coefficients are proprietary and are **not** included. Any local reimplementation is therefore *not* equivalent to the published predictor and must not be described as CamSol results. Use the web server for publishable numbers. |
 | **vmd-python** | optional trajectory analysis | VMD's licence is free for non-commercial use but is not an OSI open-source licence. |
@@ -25,7 +31,7 @@ is a wrapper around their work.
 | HMMER | `phylogeny` | BSD-3 |
 | trimAl | `phylogeny` | GPL-3 |
 | IQ-TREE | `phylogeny` | GPL-2 |
-| OpenMM | `dynamics` | MIT / LGPL |
+| OpenMM | `holo` minimisation, optional `dynamics` | MIT / LGPL |
 | ESM models | `grafting`, `scoring` | MIT (weights: check each release) |
 | US-align / TM-align | `donors` | free for academic use; author permission for commercial |
 | Foldseek | `donors` | GPL-3 |

@@ -35,6 +35,7 @@ __all__ = [
     "model_id_from_path",
     "normalise_protein_chain",
     "parse_atom_records",
+    "per_residue_confidence",
     "parse_structure",
     "first_protein_chain",
     "sequence_from_ca",
@@ -127,11 +128,17 @@ VDW_RADII = {
 _STRUCTURE_SUFFIXES = (".pdb", ".ent", ".cif", ".mmcif")
 
 
-@dataclass
+@dataclass(eq=False)
 class AtomRecord:
     """One parsed PDB ATOM/HETATM line.
 
     Mutable on purpose: transfer applies coordinate transforms in place.
+
+    ``eq=False`` gives identity comparison. Field-wise equality would compare
+    the ``coord`` arrays and raise on an ambiguous truth value whenever every
+    earlier field matched, which makes ``record in records`` a latent
+    exception. Records are identified by position in a file, not by value, so
+    identity is the right semantics anyway.
     """
 
     kind: str
@@ -455,3 +462,29 @@ def write_hydrogen_stripped(src: Path, dst: Path) -> Path:
 
     dst.write_text("\n".join(kept) + "\n")
     return dst
+
+
+def per_residue_confidence(records: list[AtomRecord], chain: str = "A") -> dict[int, float]:
+    """Mean B-factor per residue, which for a predicted model is pLDDT.
+
+    Serves two purposes with one function, because both live in the same
+    column. In a crystal structure the B-factor is positional uncertainty; in
+    an AlphaFold-family model the same column holds pLDDT, a confidence score
+    that is high in well-packed regions and low in disordered ones.
+
+    Either way it is a usable flexibility proxy, which is what ``grafting``
+    needs for junction placement -- and it is free, where per-residue RMSF
+    costs a molecular dynamics run. Note the sign is opposite between the
+    two: low B-factor means well-ordered, low pLDDT means poorly predicted.
+    The caller has to know which kind of model it is holding.
+    """
+    sums: dict[int, list[float]] = {}
+    for rec in records:
+        if rec.kind != "ATOM" or rec.chain != chain or rec.is_hydrogen:
+            continue
+        try:
+            resi = int(rec.resi)
+        except ValueError:
+            continue
+        sums.setdefault(resi, []).append(rec.bfac)
+    return {resi: sum(values) / len(values) for resi, values in sums.items()}

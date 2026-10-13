@@ -74,10 +74,28 @@ def main(argv: list[str] | None = None) -> int:
         print(f"outputs  {out}")
         return 0
 
-    # Stage dispatch is wired up as each stage is ported. Until then, fail
+    if args.stage == "holo":
+        from phylodonor.holo import run as holo_run
+
+        try:
+            outcome = holo_run.run_step(cfg, args.step)
+        except (ValueError, RuntimeError) as exc:
+            print(f"{args.stage}:{args.step} failed: {exc}", file=sys.stderr)
+            return 1
+        print(f"outputs  {outcome['out_dir']}")
+        if args.step == "qc":
+            severe = outcome.get("severe_clash_residues") or []
+            print(f"contacts {outcome['contacts_tsv']}")
+            if severe:
+                # Worth surfacing rather than burying in the manifest: these
+                # are the residues whose geometry the transfer got wrong.
+                print(f"warning  severe clashes at residues: {severe}")
+        return 0
+
+    # Remaining stages are wired up as each is ported. Until then, fail
     # loudly rather than appearing to succeed.
     print(f"not yet implemented: {args.stage}:{args.step}", file=sys.stderr)
-    print("See docs/roadmap.md for the migration order.", file=sys.stderr)
+    print("See docs/roadmap.md for the porting order.", file=sys.stderr)
     return 3
 
 

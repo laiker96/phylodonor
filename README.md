@@ -16,12 +16,18 @@ thermal    annotate each homolog's source organism with growth temperature,
            call clades that are consistently psychro- / meso- / thermophilic
 donors     rank thermophilic homologs by how well their domains superpose on
            your target -- these are your donors of stabilising structure
-holo       build cofactor-bound, minimised models of target and donors
+holo       build cofactor-bound models of target and donors; annotate contacts
 grafting   enumerate chimeric designs that transplant donor elements into the
            target, and rank them with a protein language model
-dynamics   simulate the survivors at constant temperature and under a heating ramp
 scoring    conservation, solubility and aggregation predictors
+dynamics   optional: simulate survivors, for a specific mechanistic question
 ```
+
+No GPU and no molecular dynamics are required. Minimisation in `holo` is a seconds-long
+restrained relaxation and is itself optional; MD is an opt-in stage that nothing else
+depends on. [docs/roadmap.md](docs/roadmap.md) explains why — briefly, short MD is an
+unreliable estimator of melting temperature, and this pipeline's job is to discard grafts
+that cannot work rather than to rank the ones that might.
 
 The premise: a thermophilic relative of your enzyme has already solved the stability
 problem, and the structural elements responsible can be transplanted. The tree tells you

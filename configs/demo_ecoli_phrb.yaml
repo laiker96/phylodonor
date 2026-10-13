@@ -138,11 +138,11 @@ holo:
     cutoff_angstrom: 4.0
 
   minimize:
-    engine: openmm
-    forcefield: amber14-all.xml
-    water_model: null
+    enabled: true
+    forcefield: [amber14-all.xml]
     max_iterations: 5000
     restrain_backbone: true
+    restraint_k_kcal_per_a2: 100.0
 
 folding:
   engine: esmfold2

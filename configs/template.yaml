@@ -160,16 +160,34 @@ holo:
   #   from_donor: FAD          # reuse this cofactor's already-fitted donor
   #   preserve_chains: true    # keep strands on separate chains
 
-  # Per-residue contact annotation written after minimisation.
+  # Per-residue contact annotation. This is the table `grafting` reads to
+  # build its no-go list, so err generous: a residue wrongly left out of an
+  # exclusion list permits a graft through the active site, while one wrongly
+  # included only costs a candidate. Use 4.5 when working from an unminimised
+  # model.
   contacts:
     cutoff_angstrom: 4.0
 
+  # Steric relaxation after transfer. Optional, and genuinely optional: the
+  # contact table does not need it. Relaxation shifts atoms by tenths of an
+  # angstrom, which changes distances but rarely changes which residues are
+  # in contact -- so with `enabled: false` this stage has no dependency
+  # beyond Biopython and numpy. Turn it on when the model will be folded,
+  # scored by an inverse-folding model, or simulated.
   minimize:
-    engine: openmm            # openmm | amber
-    forcefield: amber14-all.xml
-    water_model: null         # null = vacuum minimisation
+    enabled: true
+    # Requires the `dynamics` extra. Vacuum only: the cofactors enter the
+    # system as fixed particles after it is built, which an implicit-solvent
+    # force cannot accommodate.
+    forcefield: [amber14-all.xml]
+    # Keep this modest. With the backbone restrained it relieves the clashes
+    # it is meant to; run to full convergence and a vacuum minimisation
+    # starts over-attracting surface charges.
     max_iterations: 5000
     restrain_backbone: true
+    # kcal/mol/A^2, the conventional unit. 100 holds CA atoms to well under
+    # an angstrom while leaving side chains free.
+    restraint_k_kcal_per_a2: 100.0
 
 folding:
   # Used when `target.structure` is null, and for designed variants.
@@ -221,11 +239,20 @@ grafting:
     cofactor_contact_cutoff_angstrom: 4.5
 
     # Junctions should fall in flexible, surface-exposed, non-helical places.
+    # All static evidence -- no simulation required. Per-residue RMSF from a
+    # molecular dynamics run would be a slightly better flexibility signal,
+    # but not enough better to justify the GPU time; see docs/roadmap.md.
     junction_rules:
       require_loop: true              # DSSP coil/turn only
       max_backbone_rmsd_angstrom: 1.5 # receptor vs donor at the junction
       min_relative_sasa: 0.25
       flank_residues: 3               # context kept on each side
+      # Per-residue confidence from the receptor model's B-factor column,
+      # which holds pLDDT for a predicted structure. Low-confidence regions
+      # are poor places to anchor a seam. Null disables the check; set it
+      # only for a predicted model, since in a crystal structure the same
+      # column means the opposite thing.
+      min_receptor_plddt: null
 
     # Length bookkeeping.
     max_length_delta: 12              # residues, |donor seg| - |receptor seg|
