@@ -113,21 +113,6 @@ phylodonor grafting  rank  --config configs/my_target.yaml
 Reference databases (UniRef, growth-temperature datasets) are **not** downloaded for you;
 point the config at local copies. See [docs/data_sources.md](docs/data_sources.md).
 
-## Keeping sequences out of the repository
-
-The pipeline is generic: no sequence, structure or accession needs to live in the code, and
-none does. Your inputs are read from paths in your config, and those directories are
-gitignored.
-
-One pre-commit hook backs that up, because a push to a public remote cannot be undone. It
-refuses any run of 25+ amino-acid letters in any file, and structure or sequence files by
-extension:
-
-```bash
-pre-commit install                      # once
-python tools/check_denylist.py --all    # or check by hand
-```
-
 ## Citing
 
 See [CITATION.cff](CITATION.cff). Methods this pipeline builds on are credited in

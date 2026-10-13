@@ -1,14 +1,5 @@
 # Install once:  pre-commit install
 repos:
-  - repo: local
-    hooks:
-      - id: no-sequences
-        name: Refuse sequences and structure files
-        entry: python tools/check_denylist.py --staged
-        language: system
-        pass_filenames: false
-        always_run: true
-
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:

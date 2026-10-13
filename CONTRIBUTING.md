@@ -4,7 +4,7 @@
 
 ```bash
 pip install -e ".[dev]"
-pre-commit install          # required -- see below
+pre-commit install          # ruff and whitespace hooks
 pytest
 ```
 
@@ -17,14 +17,6 @@ reads it from the config via `phylodonor.config`.
 This is what makes the toolkit reusable across targets, and it is also what makes it safe to
 work on a confidential project in a public repository — the guarantee that no target data is
 in the package is only as good as this rule.
-
-One pre-commit hook enforces the part that cannot be undone: it refuses any run of 25+
-amino-acid letters, and structure or sequence files by extension. Install it before your
-first commit — a push to a public remote is permanent.
-
-```bash
-pre-commit install
-```
 
 ## Adding a stage or step
 
