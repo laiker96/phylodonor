@@ -79,9 +79,7 @@ class Config:
         """Like :meth:`get`, but also rejects ``None`` and empty collections."""
         value = self.get(dotted)
         if value is None or (hasattr(value, "__len__") and len(value) == 0):
-            raise ConfigError(
-                f"{self.path}: key '{dotted}' must be set before running this stage"
-            )
+            raise ConfigError(f"{self.path}: key '{dotted}' must be set before running this stage")
         return value
 
     def resolve(self, dotted: str, *, must_exist: bool = True) -> Path:
@@ -172,7 +170,11 @@ def _check_ranges(raw: dict[str, Any], path: Path) -> None:
                 raise ConfigError(f"{path}: '{block}' entry {item!r} has end before start")
 
 
-def load(config_path: str | os.PathLike[str], *, repo_root: str | os.PathLike[str] | None = None) -> Config:
+def load(
+    config_path: str | os.PathLike[str],
+    *,
+    repo_root: str | os.PathLike[str] | None = None,
+) -> Config:
     """Load and validate a target configuration."""
     path = Path(config_path).resolve()
     if not path.exists():

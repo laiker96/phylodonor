@@ -29,7 +29,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping, Sequence
 
 from phylodonor.config import Config
-from phylodonor.grafting.models import Design, GraftSpec, Segment
+from phylodonor.grafting.models import Design, GraftSpec
 
 __all__ = ["enumerate_grafts", "build_designs", "load_graft_table"]
 
@@ -104,6 +104,10 @@ def load_graft_table(path: str, *, receptor: str) -> list[GraftSpec]:
     raise NotImplementedError
 
 
-def _is_valid_junction(position: int, cfg: Config, **evidence: Mapping[int, float] | Mapping[int, str]) -> tuple[bool, str]:
+def _is_valid_junction(
+    position: int,
+    cfg: Config,
+    **evidence: Mapping[int, float] | Mapping[int, str],
+) -> tuple[bool, str]:
     """Whether a seam may be placed before ``position``; reason if not."""
     raise NotImplementedError

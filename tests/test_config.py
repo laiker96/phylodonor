@@ -56,43 +56,58 @@ def test_shipped_configs_do_not_weight_unvalidated_signals(cfg_name):
 
 
 def test_rejects_bad_project_name(tmp_path):
-    path = write(tmp_path, """
+    path = write(
+        tmp_path,
+        """
         project: {name: "My Target!"}
-    """)
+    """,
+    )
     with pytest.raises(config_mod.ConfigError, match="lowercase slug"):
         config_mod.load(path)
 
 
 def test_rejects_weights_that_do_not_sum_to_one(tmp_path):
-    path = write(tmp_path, """
+    path = write(
+        tmp_path,
+        """
         project: {name: t}
         donors:
           weights: {sequence_identity: 0.5, domain_tmscore: 0.9}
-    """)
+    """,
+    )
     with pytest.raises(config_mod.ConfigError, match="must sum to 1.0"):
         config_mod.load(path)
 
 
 def test_accepts_weights_that_sum_to_one(tmp_path):
-    path = write(tmp_path, """
+    path = write(
+        tmp_path,
+        """
         project: {name: t}
         donors:
           weights: {sequence_identity: 0.4, domain_tmscore: 0.6}
-    """)
+    """,
+    )
     assert config_mod.load(path).get("donors.weights.domain_tmscore") == 0.6
 
 
-@pytest.mark.parametrize("start,end,match", [
-    (0, 10, "1-based"),
-    (50, 10, "end before start"),
-])
+@pytest.mark.parametrize(
+    "start,end,match",
+    [
+        (0, 10, "1-based"),
+        (50, 10, "end before start"),
+    ],
+)
 def test_rejects_bad_ranges(tmp_path, start, end, match):
-    path = write(tmp_path, f"""
+    path = write(
+        tmp_path,
+        f"""
         project: {{name: t}}
         domains:
           definitions:
             - {{name: d, start: {start}, end: {end}}}
-    """)
+    """,
+    )
     with pytest.raises(config_mod.ConfigError, match=match):
         config_mod.load(path)
 
@@ -109,10 +124,15 @@ def test_get_default_allows_none(tmp_path):
 
 
 def test_require_rejects_empty_collections(tmp_path):
-    cfg = config_mod.load(write(tmp_path, """
+    cfg = config_mod.load(
+        write(
+            tmp_path,
+            """
         project: {name: t}
         holo: {cofactors: []}
-    """))
+    """,
+        )
+    )
     with pytest.raises(config_mod.ConfigError, match="must be set"):
         cfg.require("holo.cofactors")
 

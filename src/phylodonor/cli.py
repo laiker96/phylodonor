@@ -17,7 +17,8 @@ from __future__ import annotations
 import argparse
 import sys
 
-from phylodonor import __version__, config as config_mod
+from phylodonor import __version__
+from phylodonor import config as config_mod
 
 STAGES: dict[str, list[str]] = {
     "homologs": ["search", "annotate", "classify"],
@@ -45,8 +46,11 @@ def build_parser() -> argparse.ArgumentParser:
         sp = subparsers.add_parser(stage, help=f"{stage} stage ({', '.join(steps)})")
         sp.add_argument("step", choices=steps, help="step to run")
         sp.add_argument("-c", "--config", required=True, help="target YAML config")
-        sp.add_argument("--dry-run", action="store_true",
-                        help="validate config and report paths without running")
+        sp.add_argument(
+            "--dry-run",
+            action="store_true",
+            help="validate config and report paths without running",
+        )
         sp.add_argument("-v", "--verbose", action="store_true")
 
     return parser

@@ -7,9 +7,20 @@ on:
 
 jobs:
   guard:
-    # Runs first and independently: nothing else matters if private material
-    # has leaked into the tree.
+    # Runs independently of the tests: nothing else matters if material that
+    # should not be public has reached the tree or the history.
+    #
+    # The generic scan always runs and must pass. The project-pattern scan
+    # needs the PRIVATE_PATTERNS secret, which is absent on forks and on pull
+    # requests from them, so its absence is reported as a warning rather than
+    # a failure -- a permanently red CI teaches people to ignore CI, which is
+    # worse for safety than a visible gap. Hard enforcement lives in the
+    # pre-commit hook, which reads the local .private-patterns file.
     runs-on: ubuntu-latest
+    # Set at job level so that step-level `if:` can read it. A step's own
+    # `env:` block is not visible to that step's `if:`.
+    env:
+      PRIVATE_PATTERNS: ${{ secrets.PRIVATE_PATTERNS }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -17,29 +28,18 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Denylist scan (working tree)
-        env:
-          PRIVATE_PATTERNS: ${{ secrets.PRIVATE_PATTERNS }}
-        run: python tools/check_denylist.py --all --require-project-denylist
-      - name: Denylist scan (full history)
-        env:
-          PRIVATE_PATTERNS: ${{ secrets.PRIVATE_PATTERNS }}
+
+      - name: Scan working tree
+        run: python tools/check_denylist.py --all
+
+      - name: Scan full history
+        if: env.PRIVATE_PATTERNS != ''
+        run: python tools/check_history.py
+
+      - name: Warn if project patterns are not configured
+        if: env.PRIVATE_PATTERNS == ''
         run: |
-          # The history is the repo. A clean checkout is not enough.
-          python - <<'PY'
-          import os, re, subprocess, sys
-          raw = os.environ.get("PRIVATE_PATTERNS", "")
-          pats = [re.compile(p.strip(), re.I) for p in raw.splitlines()
-                  if p.strip() and not p.startswith("#")]
-          if not pats:
-              sys.exit("no PRIVATE_PATTERNS configured")
-          log = subprocess.run(["git", "log", "--all", "-p", "--no-color"],
-                               capture_output=True, text=True, errors="ignore").stdout
-          hits = sorted({p.pattern for p in pats if p.search(log)})
-          if hits:
-              sys.exit("pattern(s) found in git history: " + ", ".join(hits))
-          print("history clean")
-          PY
+          echo "::warning title=Project patterns not configured::PRIVATE_PATTERNS is unset, so only the generic patterns were checked and the git history was not scanned. Set it under Settings -> Secrets and variables -> Actions to enable the full check. Expected on forks."
 
   test:
     runs-on: ubuntu-latest
@@ -50,4 +50,5 @@ jobs:
           python-version: "3.11"
       - run: pip install -e ".[dev]"
       - run: ruff check .
+      - run: ruff format --check .
       - run: pytest
