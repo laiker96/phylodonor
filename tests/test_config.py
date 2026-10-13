@@ -55,6 +55,43 @@ def test_shipped_configs_do_not_weight_unvalidated_signals(cfg_name):
     assert cfg.get("grafting.score.filters.max_pll_drop") is None
 
 
+def test_required_stages_do_not_depend_on_optional_ones():
+    """The five required stages must be runnable without the opt-in ones.
+
+    If a required stage ever starts needing a key from `phylogeny`,
+    `dynamics`, `scoring` or `viz`, the pipeline has quietly regrown a
+    dependency the audit removed. See docs/roadmap.md.
+    """
+    optional_prefixes = ("phylogeny.", "dynamics.", "scoring.", "viz.")
+    required = ("homologs", "thermal", "donors", "holo", "grafting")
+    for stage in required:
+        for key in config_mod._STAGE_REQUIREMENTS[stage]:
+            assert not key.startswith(optional_prefixes), (
+                f"required stage {stage!r} depends on optional key {key!r}"
+            )
+
+
+def test_demo_config_runs_the_required_stages(tmp_path):
+    """The demo must satisfy every required stage it can without a database."""
+    cfg = config_mod.load(REPO_ROOT / "configs" / "demo_ecoli_phrb.yaml", repo_root=REPO_ROOT)
+    cfg.check_stage("thermal")
+    cfg.check_stage("holo")
+    cfg.check_stage("grafting")
+    cfg.check_stage("donors")
+
+
+def test_thermal_calls_regimes_over_clusters_not_clades():
+    """Label hygiene comes from cluster purity; the tree is gone."""
+    cfg = config_mod.load(REPO_ROOT / "configs" / "template.yaml", repo_root=REPO_ROOT)
+    rules = cfg.require("thermal.cluster_regimes")
+    assert rules["min_labelled"] >= 2, "a single annotation must not carry a cluster"
+    assert 0 < rules["min_purity"] <= 1
+    assert rules["impute_unlabelled"] is False, (
+        "imputing a regime onto an unannotated sequence is a claim, not a default"
+    )
+    assert "min_clade_size" not in cfg.raw.get("thermal", {})
+
+
 def test_rejects_bad_project_name(tmp_path):
     path = write(
         tmp_path,

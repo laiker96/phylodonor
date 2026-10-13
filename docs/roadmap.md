@@ -3,6 +3,50 @@
 The architecture, configuration schema and stage contracts are settled. Stages are being
 implemented in dependency order, easiest first, so that a runnable slice exists early.
 
+## What is required, and what is not
+
+The pipeline this was extracted from had nine stages. Five are required here. The cuts were
+made by tracing what actually consumes each output, not by taste.
+
+| Dropped from the critical path | Why |
+|---|---|
+| Phylogenetic tree | Contributes nothing to donor ranking; the donor score is per-domain structural similarity, coverage and TM-score, with no phylogenetic term. Tree distances were computed and then used only as a heatmap sort key, in a module nothing imported. |
+| Molecular dynamics | No stage reads it. See below. |
+| Solubility / aggregation scoring | Fed only a terminal analysis step. Gates no design. |
+| Sequence logos, conservation profiles, interactive trees, clade differential analysis | Figures. Nothing reads them. |
+
+In the source pipeline, six of twenty-six steps in the largest sub-pipeline were terminal
+leaves whose output nothing consumed, and the whole sub-pipeline exported exactly one
+artifact to the rest of the project.
+
+### The one thing the tree really did
+
+It cleaned growth-temperature labels. Clade calling required several annotated tips that all
+agreed on regime within a supported subtree, which discards singleton and suspect
+annotations — and since growth-temperature datasets join by taxon id, those are precisely
+the errors worth discarding.
+
+That function is kept, by a cheaper mechanism: `thermal` calls regimes over the **sequence
+clusters** that `homologs` already computes for representative selection. Same logic —
+agreement among related sequences — without the alignment, trimming and tree inference.
+
+What is deliberately given up: imputing a regime across deeper phylogenetic distance. The
+original could promote an unannotated sequence into the thermophile pool on clade
+membership; `impute_unlabelled` defaults to false here, because that is a real claim to make
+about a sequence nothing is known about.
+
+### A note on where the design insight came from
+
+Worth recording, because it is the real architectural difference. In the source pipeline the
+graft targets were hand-curated constants, and the analysis steps that informed them passed
+their conclusions through a *person*, not a file — no code path connects them. Those steps
+are data leaves, but they were not useless; they were how someone decided where to graft.
+
+Here that step is mechanical: enumerate every structurally plausible graft under explicit
+constraints, then triage with a language model and a structure-prediction gate. The analysis
+steps can go not because the thinking was worthless but because candidates are now generated
+and filtered rather than chosen.
+
 ## Simulation is not on the critical path
 
 Worth stating first, because it shapes everything below.
@@ -48,9 +92,8 @@ values ever arrive and the correlation is worth checking.
 | 2 | folding helper | next | Sequence → structure, used by `holo` and `grafting`. A thin wrapper over an existing predictor rather than its own stage. |
 | 3 | `donors` | planned | Structural superposition and per-domain donor ranking. Needs the region-map abstraction below. |
 | 4 | `grafting` | planned | Candidate enumeration and language-model triage. Interfaces are fixed in `src/phylodonor/grafting/`; see [grafting.md](grafting.md). |
-| 5 | `homologs`, `phylogeny`, `thermal` | planned | The reconnaissance half. Largest piece of work, and the one that most needs the region map. |
-| 6 | `scoring`, `viz` | planned | Predictors and figures. Useful throughout but blocking nothing. |
-| — | `dynamics` | opt-in | Not required by any other stage. Port when a question needs it. |
+| 5 | `homologs`, `thermal` | planned | The reconnaissance half: search, subfamily filter, cluster, align, then regimes over clusters. Substantially smaller than the source pipeline now that the tree is gone. |
+| — | `scoring`, `viz`, `phylogeny`, `dynamics` | opt-in | Nothing depends on any of them. Port if a question needs one. |
 
 Stages 1–4 form a coherent tool on their own: fold → build a cofactor-bound model → find
 thermophilic donors → triage grafts. That is the first milestone, and it needs no GPU.

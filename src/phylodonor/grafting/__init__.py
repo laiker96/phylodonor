@@ -1,7 +1,7 @@
 """Donor-to-receptor grafting, ranked by a protein language model.
 
 This is the design stage. Everything upstream of it is reconnaissance: find
-homologs, place them on a tree, annotate growth temperature, pick donors that
+homologs, annotate growth temperature, pick donors that
 live hotter than the receptor. This stage decides *what to actually build*.
 
 The receptor is the target protein. A donor is a thermophilic homolog. A

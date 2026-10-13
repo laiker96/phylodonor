@@ -20,16 +20,19 @@ import sys
 from phylodonor import __version__
 from phylodonor import config as config_mod
 
+#: Stage -> steps. `phylogeny` and `dynamics` are opt-in: no other stage
+#: reads their output. See docs/roadmap.md.
 STAGES: dict[str, list[str]] = {
-    "homologs": ["search", "annotate", "classify"],
-    "phylogeny": ["align", "qc", "tree"],
-    "thermal": ["annotate", "clades"],
+    "homologs": ["search", "annotate", "classify", "cluster", "align"],
+    "thermal": ["annotate", "regimes"],
     "donors": ["map", "score", "rank"],
     "holo": ["build", "minimize", "qc"],
     "grafting": ["enumerate", "score", "rank"],
     "dynamics": ["prepare", "run", "analyze"],
     "scoring": ["conservation", "solubility", "aggregation"],
     "viz": ["tree", "logos", "summary"],
+    # Opt-in stages, listed last. Nothing depends on either.
+    "phylogeny": ["align", "trim", "tree"],
 }
 
 

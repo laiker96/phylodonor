@@ -59,8 +59,8 @@ is the main way this stage goes wrong.
 
 Embed the chimera, embed a reference set, and measure how far the design moves toward it
 relative to wild type. `embedding_reference` selects the set: `donors` uses the ranked
-donors, `thermophile_clades` uses every tip the `thermal` stage called thermophilic — a
-larger and less arbitrary reference, and the better choice when the tree supports it.
+donors, `thermophile_homologs` uses every homolog the `thermal` stage called
+thermophilic — a larger and less arbitrary reference.
 
 This asks a question likelihood cannot: *has this design actually moved toward the
 thermophilic regime?* Likelihood is objective-blind — a design can be perfectly plausible

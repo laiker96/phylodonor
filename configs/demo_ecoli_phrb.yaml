@@ -68,18 +68,14 @@ search:
   max_hits: 20000
   threads: 8
 
-phylogeny:
+cluster:
+  tool: mmseqs2
+  min_seq_id: 0.50
+  coverage: 0.80
+  threads: 8
+
+align:
   aligner: hmmalign
-  trim:
-    tool: trimal
-    gap_threshold: 0.30
-  tree:
-    tool: iqtree
-    model: auto
-    ultrafast_bootstrap: 1000
-    sh_alrt: 1000
-    threads: 8
-  outgroup: []              # midpoint rooting for the demo
 
 thermal:
   sources:
@@ -90,8 +86,11 @@ thermal:
     mesophile: {min: 20, max: 45}
     thermophile: {min: 45, max: 80}
     hyperthermophile: {min: 80}
-  min_clade_size: 5
-  min_clade_purity: 0.70
+  cluster_regimes:
+    min_labelled: 3
+    min_purity: 0.70
+    impute_unlabelled: false
+    prefer_measured: true
 
 donors:
   # E. coli grows at 37 C, so a 15 C margin puts donors at >= 52 C.
@@ -193,7 +192,7 @@ grafting:
   language_model:
     sequence_model: esm2_t33_650M_UR50D
     inverse_folding_model: null
-    embedding_reference: thermophile_clades
+    embedding_reference: thermophile_homologs
     pll_method: masked
     batch_size: 8
     device: auto
@@ -222,14 +221,16 @@ grafting:
     run_dynamics: false
 
 scoring:
+  # Optional throughout; nothing downstream depends on these.
   conservation:
+    method: shannon
     model: esm1v
     ensemble: 5
   solubility:
-    enabled: true
+    enabled: false
     tool: camsol
   aggregation:
-    enabled: true
+    enabled: false
     tool: aggrescan3d
 
 paths:

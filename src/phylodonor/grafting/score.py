@@ -129,7 +129,7 @@ def score_designs(
     scorer
         Injected for testing; otherwise built via :func:`load_scorer`.
     reference_sequences
-        Donor or thermophile-clade sequences, used only for the optional
+        Donor or thermophilic-homolog sequences, used only for the optional
         ``embedding_distance`` term. Omit to skip it.
 
     Returns

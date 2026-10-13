@@ -100,9 +100,9 @@ class LMScores:
     meaningful as the reference set, and embedding proximity has no calibrated
     relationship to stability or foldability."""
     donor_conservation: float | None = None
-    """How typical the donor segment is within its own thermophilic clade. A
-    graft taken from an idiosyncratic donor loop is a worse bet than one taken
-    from a region conserved across thermophiles."""
+    """How typical the donor segment is among the thermophilic homologs, from
+    the alignment. A graft taken from an idiosyncratic donor loop is a worse
+    bet than one from a region conserved across thermophiles."""
 
     delta_pll: float | None = None
     """Whole-sequence pseudo-log-likelihood, chimera minus receptor.

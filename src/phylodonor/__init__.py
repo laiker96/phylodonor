@@ -1,16 +1,25 @@
 """phylodonor -- phylogeny-guided donor grafting for protein thermostability.
 
-Stages, in pipeline order:
+Stages, in pipeline order. Required:
 
-    homologs   -> find and classify family members
-    phylogeny  -> align, trim, build a tree
-    thermal    -> annotate growth temperature, call thermal-regime clades
+    homologs   -> search, filter to subfamily, cluster, align
+    thermal    -> annotate growth temperature, call regimes over clusters
     donors     -> rank thermophilic homologs as donors
-    holo       -> build cofactor-bound, minimised structures
-    grafting   -> enumerate chimeric designs, rank them with a protein LM
-    dynamics   -> simulate survivors
-    scoring    -> sequence-level predictors (conservation, solubility, aggregation)
-    viz        -> trees, logos, plots
+    holo       -> build cofactor-bound structures, annotate contacts
+    grafting   -> enumerate chimeric designs, triage them with a protein LM
+
+Optional -- nothing above reads their output:
+
+    scoring    -> conservation, solubility, aggregation predictors
+    viz        -> logos, plots
+    phylogeny  -> alignment trimming and tree inference
+    dynamics   -> molecular dynamics
+
+A tree contributes nothing to donor ranking: the donor score has no
+phylogenetic term. Its one real contribution -- discarding noisy
+growth-temperature labels -- is done by cluster purity in ``thermal``
+instead, which reuses the clustering ``homologs`` already performs. Likewise
+no stage needs molecular dynamics. See ``docs/roadmap.md``.
 
 Each stage reads its parameters from a single YAML config; see
 ``phylodonor.config`` and ``configs/template.yaml``.

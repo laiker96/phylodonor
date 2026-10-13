@@ -10,24 +10,40 @@ Phylogeny-guided donor grafting for protein thermostability, triaged by a protei
 Given an enzyme you want to make more thermostable, and nothing else:
 
 ```
-homologs   find family members in a sequence database, filter to the right subfamily
-phylogeny  align, trim, infer a tree
-thermal    annotate each homolog's source organism with growth temperature,
-           call clades that are consistently psychro- / meso- / thermophilic
+homologs   search a sequence database, filter to the right subfamily, cluster,
+           and align the representatives
+thermal    annotate each homolog's source organism with growth temperature and
+           call psychro- / meso- / thermophilic regimes over the clusters
 donors     rank thermophilic homologs by how well their domains superpose on
            your target -- these are your donors of stabilising structure
 holo       build cofactor-bound models of target and donors; annotate contacts
 grafting   enumerate chimeric designs that transplant donor elements into the
-           target, and rank them with a protein language model
+           target, and triage them with a protein language model
+                                 ↓
+           a shortlist to express
+
+optional, nothing above depends on them:
 scoring    conservation, solubility and aggregation predictors
-dynamics   optional: simulate survivors, for a specific mechanistic question
+viz        logos and plots
+phylogeny  alignment trimming and tree inference
+dynamics   molecular dynamics
 ```
 
-No GPU and no molecular dynamics are required. Minimisation in `holo` is a seconds-long
-restrained relaxation and is itself optional; MD is an opt-in stage that nothing else
-depends on. [docs/roadmap.md](docs/roadmap.md) explains why — briefly, short MD is an
-unreliable estimator of melting temperature, and this pipeline's job is to discard grafts
-that cannot work rather than to rank the ones that might.
+**Five required stages, and no GPU beyond the language model.** Neither a phylogenetic
+tree nor molecular dynamics is required, and both were in the pipeline this was extracted
+from:
+
+- A **tree** contributes nothing to donor ranking — the donor score has no phylogenetic
+  term. Its one real job was discarding noisy growth-temperature labels, which `thermal`
+  now does by requiring agreement within a sequence cluster: the same mechanism, reusing
+  clustering the pipeline already performs, without an alignment-trim-tree chain.
+- **MD** was providing a relaxed model (that is minimisation, not MD), per-residue
+  flexibility for junction placement (DSSP, SASA and predicted confidence cover it), and a
+  heating-ramp stability ranking — which short MD estimates unreliably, and which this
+  pipeline deliberately does not try to do.
+
+External tools reduce to mmseqs2, a structural aligner, DSSP and ESM. Nothing
+licence-encumbered. [docs/roadmap.md](docs/roadmap.md) has the reasoning.
 
 The premise: a thermophilic relative of your enzyme has already solved the stability
 problem, and the structural elements responsible can be transplanted. The tree tells you

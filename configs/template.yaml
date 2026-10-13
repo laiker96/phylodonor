@@ -76,19 +76,26 @@ search:
   max_hits: 20000
   threads: 8
 
-phylogeny:
+cluster:
+  # Cluster the hits and keep one representative per cluster. This does two
+  # jobs: it stops an over-sequenced genus from dominating, and the clusters
+  # are the grouping unit that `thermal` calls growth-temperature regimes
+  # over (see below).
+  tool: mmseqs2
+  min_seq_id: 0.50
+  coverage: 0.80
+  threads: 8
+
+align:
+  # A multiple sequence alignment of the representatives. Needed for the
+  # `donor_conservation` score term -- "is this donor segment typical of
+  # thermophiles" is a question about an alignment.
+  #
+  # No trimming and no tree. A tree contributes nothing to donor ranking
+  # (the donor score has no phylogenetic term), and its one real
+  # contribution -- cleaning noisy growth-temperature labels -- is done
+  # here by cluster purity instead. See docs/roadmap.md.
   aligner: hmmalign           # hmmalign | mafft
-  trim:
-    tool: trimal
-    gap_threshold: 0.30
-  tree:
-    tool: iqtree
-    model: auto               # or an explicit model, e.g. LG+F+G4
-    ultrafast_bootstrap: 1000
-    sh_alrt: 1000
-    threads: 8
-  # Accessions to use as the outgroup for rooting. Leave empty for midpoint.
-  outgroup: []
 
 thermal:
   # Growth-temperature annotation for each homolog's source organism.
@@ -106,10 +113,30 @@ thermal:
     mesophile: {min: 20, max: 45}
     thermophile: {min: 45, max: 80}
     hyperthermophile: {min: 80}
-  # Minimum number of annotated tips for a clade to be called as a regime.
-  min_clade_size: 5
-  # Fraction of a clade's annotated tips that must share a regime.
-  min_clade_purity: 0.70
+
+  # Label hygiene. Growth-temperature datasets join by taxon id and are
+  # sometimes wrong, so a regime is called over a *cluster* of related
+  # sequences rather than trusting each sequence's own annotation: a lone
+  # mislabelled hit cannot carry a cluster, and a cluster with no clear
+  # majority is left uncalled.
+  #
+  # This is the cheap replacement for phylogenetic clade calling. It uses the
+  # same mechanism -- agreement among related sequences -- over the clusters
+  # `cluster` already produced, instead of an alignment/trim/tree chain.
+  cluster_regimes:
+    # Minimum annotated members before a cluster can be called at all.
+    min_labelled: 3
+    # Fraction of a cluster's annotated members that must agree.
+    min_purity: 0.70
+    # Whether an unannotated member inherits its cluster's regime. False is
+    # the conservative default: calling a sequence thermophilic because its
+    # neighbours are is a real claim, and silently inheriting it inflates
+    # the donor pool with sequences nothing is actually known about.
+    impute_unlabelled: false
+    # Prefer datasets with measured rather than predicted growth
+    # temperatures when both cover an organism. Attacks label quality at
+    # the source, which is cheaper than correcting for it statistically.
+    prefer_measured: true
 
 donors:
   # Ranking of thermophilic homologs as donors of stabilising structure.
@@ -267,9 +294,9 @@ grafting:
 
     # Reference set for the embedding term: which sequences a design should
     # look more like than wild type does. `donors` uses the ranked donors;
-    # `thermophile_clades` uses every tip the thermal stage called
+    # `thermophile_homologs` uses every homolog the thermal stage called
     # thermophilic, which is a larger and less arbitrary reference.
-    embedding_reference: donors        # donors | thermophile_clades
+    embedding_reference: donors        # donors | thermophile_homologs
 
     # Pseudo-log-likelihood estimator, used only if a PLL term carries weight
     # below. `masked` is one forward pass per position and much slower;
@@ -349,8 +376,19 @@ grafting:
 
 scoring:
   # Sequence-level predictors applied to the target and to designed variants.
+  #
+  # Entirely optional: nothing downstream reads these, and the language
+  # model, the clash detector and the structure-prediction gate already
+  # reject the designs these would reject. Both external tools add friction
+  # too -- CamSol's fitted coefficients are proprietary and Aggrescan3D is a
+  # web server. Turn them on for extra evidence on a shortlist, not as a
+  # matter of course.
   conservation:
-    model: esm1v
+    # `shannon` is column entropy over the alignment: no GPU, no model
+    # download, and adequate wherever conservation is a weak prior. `esm1v`
+    # is better calibrated for variant effects and costs a model load.
+    method: shannon           # shannon | esm1v
+    model: esm1v              # used only when method is esm1v
     ensemble: 5
   solubility:
     enabled: true

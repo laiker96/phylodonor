@@ -33,13 +33,14 @@ _WEIGHT_BLOCKS = ("donors.weights", "grafting.score.weights")
 # Stages and the config sections they require to be non-null.
 _STAGE_REQUIREMENTS: dict[str, tuple[str, ...]] = {
     "homologs": ("target.fasta", "search.database"),
-    "phylogeny": ("phylogeny.aligner", "phylogeny.tree.tool"),
-    "thermal": ("thermal.regimes",),
+    "thermal": ("thermal.regimes", "thermal.cluster_regimes"),
     "donors": ("donors.weights", "donors.min_ogt_delta"),
     "grafting": ("grafting.language_model.sequence_model", "grafting.score.weights"),
     "holo": ("holo.cofactors",),
     "dynamics": ("dynamics.engine", "dynamics.forcefield"),
-    "scoring": ("scoring.conservation.model",),
+    "scoring": ("scoring.conservation.method",),
+    # Opt-in; required keys only matter if you choose to run them.
+    "phylogeny": ("phylogeny.aligner",),
 }
 
 _SLUG = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
